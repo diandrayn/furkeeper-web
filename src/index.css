@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* h2/h3/etc. use the regular body font (no longer the display font). */
+  --font-heading: 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  /* Distinctive display font — reserved for the page H1 only. */
+  --font-hero: 'Lilita One', cursive;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-brand-cream font-body text-text-primary antialiased;
+  }
+
+  h1,
+  h2 {
+    @apply font-bold;
+  }
+}
+
+@layer components {
+  /* Subtle hover/click micro-interaction for buttons & interactive cards
+     (Section 3). Opt in with className="playful-interactive". Never applied
+     globally — dashboards/forms can skip it entirely by not adding the class. */
+  .playful-interactive {
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .playful-interactive:hover {
+    transform: translateY(-2px) scale(1.015) rotate(-0.3deg);
+  }
+  .playful-interactive:active {
+    transform: scale(0.98);
+  }
+
+  /* PawLoader animation */
+  .paw-loader__dot {
+    display: inline-flex;
+    opacity: 0.25;
+    animation: paw-loader-pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes paw-loader-pulse {
+    0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+    40% { opacity: 1; transform: translateY(-3px); }
+  }
+
+  .dual-range {
+    @apply pointer-events-none absolute h-2 w-full appearance-none bg-transparent;
+  }
+
+  .dual-range::-webkit-slider-thumb {
+    @apply pointer-events-auto relative z-10 h-4 w-4 cursor-pointer appearance-none rounded-full border-2 border-white bg-brand-burgundy shadow-sm;
+  }
+
+  .dual-range::-moz-range-thumb {
+    @apply pointer-events-auto relative z-10 h-4 w-4 cursor-pointer appearance-none rounded-full border-2 border-white bg-brand-burgundy shadow-sm;
+  }
+}
+
+/* Global motion-safety net (applies to EVERY hover/click animation site-wide,
+   not just the .playful-interactive class — this is the one place the whole
+   site's motion preference is honored, per the UX guidelines doc). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .paw-loader__dot {
+    opacity: 1 !important;
+  }
+}
