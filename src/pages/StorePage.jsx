@@ -121,6 +121,7 @@ export default function StorePage() {
         setCategories(cats);
         setServiceTypes(types);
         setReviews(reviewsRes);
+        setStatus('ready');
       } catch (err) {
         if (!active) return;
         if (err instanceof StoreUnavailableError) setStatus('unavailable');
@@ -136,10 +137,6 @@ export default function StorePage() {
       active = false;
     };
   }, [storeId]);
-
-  // First page of each listing is loaded by the query effects below
-  // (deps [store, ...query]) — they fire as soon as the store arrives and
-  // again whenever a search/filter/sort changes.
 
   useEffect(() => {
     if (!store) return;
@@ -357,7 +354,7 @@ export default function StorePage() {
         {store.bannerUrl ? (
           <img src={store.bannerUrl} alt={`Banner ${store.name}`} className="h-44 w-full object-cover md:h-56" />
         ) : (
-          <div className="h-44 w-full bg-gradient-to-r from-brand-burgundy via-brand-burgundy/80 to-brand-orange-end md:h-56" />
+          <div className="h-44 w-full bg-gradient-to-r from-brand-burgundy via-brand-burgundy to-[#2c3f8f] md:h-56" />
         )}
         {isOwner && (
           <Link
@@ -367,22 +364,26 @@ export default function StorePage() {
             <Pencil className="h-3.5 w-3.5" /> {t('storePage.editProfile')}
           </Link>
         )}
+
+        {/* Avatar dipaku di tepi bawah banner (absolute), bukan negative margin,
+            jadi ga bergantung layout di bawahnya dan pasti ga ketutup lagi. */}
+        <div className="absolute -bottom-10 left-4 flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-md ring-4 ring-white md:left-6">
+          {store.logoUrl ? (
+            <img src={store.logoUrl} alt={`Logo ${store.name}`} className="h-full w-full object-cover" />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center bg-brand-peach font-heading text-xl font-bold text-brand-burgundy">
+              {getInitials(store.name)}
+            </span>
+          )}
+        </div>
       </div>
 
       <main className="mx-auto max-w-container px-4 pb-12 md:px-6 lg:px-8">
-        {/* Identity: rounded logo overlapping the banner */}
-        <div className="-mt-10 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-md ring-4 ring-white">
-              {store.logoUrl ? (
-                <img src={store.logoUrl} alt={`Logo ${store.name}`} className="h-full w-full object-cover" />
-              ) : (
-                <span className="flex h-full w-full items-center justify-center bg-brand-peach font-heading text-xl font-bold text-brand-burgundy">
-                  {getInitials(store.name)}
-                </span>
-              )}
-            </div>
-            <div className="max-w-xl">
+        {/* pt-10 = ruang buat avatar yang sekarang ditempel absolute di banner;
+            sm:pl-24 = jarak dari kiri biar teks ga ketiban avatar dari sm ke atas */}
+        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <div className="flex flex-col gap-3 pt-10 sm:flex-row sm:items-start sm:pt-0 sm:pl-24">
+            <div className="max-w-xl pt-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="font-heading text-2xl font-bold text-text-primary md:text-3xl">{store.name}</h1>
                 {store.trusted && <Badge variant="trusted" label={t('storePage.verified')} />}

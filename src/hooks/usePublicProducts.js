@@ -1,20 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
-import { products as demoProducts } from '../data/mockProducts';
+import { useEffect, useState } from 'react';
 import { fetchPublicProducts } from '../utils/products';
 
 /**
- * Combines real seller products from Supabase with the existing demo
- * catalog (src/data/mockProducts.js), so /produk and /produk/:id show
- * whatever sellers have actually added on top of the placeholder listings
- * used for browsing/demoing the UI.
- *
- * Real products are listed first. If the fetch fails (e.g. offline, RLS,
- * a schema mismatch), this falls back to just the demo catalog — but logs
- * the real error to the console instead of swallowing it, since a silent
+ * Loads real seller products from Supabase for /produk and /produk/:id.
+ * No demo/mock fallback — only what sellers have actually added via the
+ * dashboard ever shows here. If the fetch fails (e.g. offline, RLS, a
+ * schema mismatch), the list is simply empty — but the real error is
+ * still logged to the console instead of swallowed, since a silent
  * failure here looks exactly like "my product didn't show up".
  */
 export function usePublicProducts() {
-  const [realProducts, setRealProducts] = useState([]);
+  const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -22,11 +18,11 @@ export function usePublicProducts() {
     let active = true;
     fetchPublicProducts()
       .then((rows) => {
-        if (active) setRealProducts(rows);
+        if (active) setProducts(rows);
       })
       .catch((err) => {
         if (!active) return;
-        console.error('fetchPublicProducts failed — falling back to demo catalog only:', err);
+        console.error('fetchPublicProducts failed:', err);
         setError(err);
       })
       .finally(() => {
@@ -36,8 +32,6 @@ export function usePublicProducts() {
       active = false;
     };
   }, []);
-
-  const products = useMemo(() => [...realProducts, ...demoProducts], [realProducts]);
 
   return { products, isLoading, error };
 }

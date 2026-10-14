@@ -83,15 +83,19 @@ export function mapProfileRow(row) {
 export async function fetchPublicStore(identifier) {
   const id = identifier || '';
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-  const filter = isUuid
-    ? `id.eq.${id}`
-    : `slug.eq.${id},id.eq.${id}`;
 
-  const { data, error } = await supabase
+  // `id` is a uuid column, so combining it with `slug` in one .or() filter
+  // (e.g. "slug.eq.roomer-aw,id.eq.roomer-aw") makes Postgres try to cast
+  // the slug string to uuid too, which throws "invalid input syntax for
+  // type uuid" before the slug half is ever evaluated. Query by whichever
+  // column actually matches the identifier's shape instead.
+  const query = supabase
     .from('stores')
-    .select('*, products(count), services(count), owner:profiles!owner_id(is_suspended)')
-    .or(filter)
-    .maybeSingle();
+    .select('*, products(count), services(count), owner:profiles!owner_id(is_suspended)');
+
+  const { data, error } = isUuid
+    ? await query.eq('id', id).maybeSingle()
+    : await query.eq('slug', id).maybeSingle();
   if (error) throw error;
   if (!data) throw new Error('Toko tidak ditemukan');
   if (!data.owner || data.owner.is_suspended) throw new StoreUnavailableError();

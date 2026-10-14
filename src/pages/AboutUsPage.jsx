@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import WaveDivider from '../components/decorative/WaveDivider';
-import ImagePlaceholder from '../components/ImagePlaceholder';
 import SectionHeader from '../components/SectionHeader';
 import Button from '../components/Button';
 import PawPrintPattern from '../components/decorative/PawPrintPattern';
 import aboutLove from '../assets/about-illustration-love.png';
 import aboutStory from '../assets/about-illustration-story.png';
+import aboutWhy from '../assets/about-illustration-why.png';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../hooks/useAuth';
 
@@ -212,9 +212,7 @@ export default function AboutUsPage() {
         </section>
 
         {/* Kenapa Pilih FurKeeper — MUUM-style 2x2 feature grid flanking a
-            center photo, alternating peach/blue card backgrounds. Swap the
-            ImagePlaceholder for a real customer/product photo — a portrait
-            crop works best here since the column is narrow and tall. */}
+            center photo, alternating peach/blue card backgrounds. */}
         <section className="relative overflow-hidden py-12 lg:py-16">
           <PawPrintPattern className="text-brand-burgundy" opacity={0.06} />
           <div className="relative mx-auto max-w-container px-4 md:px-6 lg:px-8">
@@ -246,9 +244,10 @@ export default function AboutUsPage() {
                 })}
               </div>
 
-              <ImagePlaceholder
-                className="playful-interactive order-first aspect-[4/5] w-full rounded-[2.5rem] lg:order-none"
+              <img
+                src={aboutWhy}
                 alt={whyChoose.centerPhotoAlt}
+                className="playful-interactive order-first aspect-[4/5] w-full rounded-[2.5rem] object-cover lg:order-none"
               />
 
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-1">

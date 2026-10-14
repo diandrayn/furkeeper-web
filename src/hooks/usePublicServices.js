@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
-import { services as demoServices } from '../data/mockServices';
+import { useEffect, useState } from 'react';
 import { fetchPublicServices } from '../utils/services';
 
-/** Mirrors usePublicProducts.js — combines real provider services from
- * Supabase with the demo catalog, real ones listed first. Logs (instead of
- * swallowing) fetch errors for the same reason. */
+/** Mirrors usePublicProducts.js — loads real provider services from
+ * Supabase only, no demo/mock fallback. Logs (instead of swallowing)
+ * fetch errors for the same reason. */
 export function usePublicServices() {
-  const [realServices, setRealServices] = useState([]);
+  const [services, setServices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -14,11 +13,11 @@ export function usePublicServices() {
     let active = true;
     fetchPublicServices()
       .then((rows) => {
-        if (active) setRealServices(rows);
+        if (active) setServices(rows);
       })
       .catch((err) => {
         if (!active) return;
-        console.error('fetchPublicServices failed — falling back to demo catalog only:', err);
+        console.error('fetchPublicServices failed:', err);
         setError(err);
       })
       .finally(() => {
@@ -28,8 +27,6 @@ export function usePublicServices() {
       active = false;
     };
   }, []);
-
-  const services = useMemo(() => [...realServices, ...demoServices], [realServices]);
 
   return { services, isLoading, error };
 }
