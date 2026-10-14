@@ -21,11 +21,11 @@ export class ApiError extends Error {
 
 // Tujuan redirect setelah link konfirmasi email diklik. Default = origin
 // aplikasi yang sedang dipakai (mis. http://localhost:5173), tapi bisa
-// dipaksa ke URL produksi lewat env VITE_SITE_URL — penting saat signup
+// dipaksa ke URL produksi lewat env NEXT_PUBLIC_SITE_URL — penting saat signup
 // terjadi lewat URL preview/staging yang tidak ingin jadi tujuan tautan
 // konfirmasi (dan harus terdaftar di Authentication → URL Configuration).
 function resolveEmailRedirectTo() {
-  return import.meta.env.VITE_SITE_URL || window.location.origin;
+  return process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
 }
 
 function mapSupabaseUser(user) {
