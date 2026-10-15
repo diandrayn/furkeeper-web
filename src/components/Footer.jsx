@@ -1,5 +1,5 @@
 import { Phone, MapPin, Mail } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link } from '@/lib/router';
 import Logo from './Logo';
 import PawPrintPattern from './decorative/PawPrintPattern';
 import { useLanguage } from '../i18n/LanguageContext';

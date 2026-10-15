@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '@/lib/router';
 import { Wallet, ShoppingBag, Package, Star, CalendarCheck, ArrowRight } from 'lucide-react';
 import Card from '../../components/Card';
 import StatCard from '../../components/dashboard/StatCard';

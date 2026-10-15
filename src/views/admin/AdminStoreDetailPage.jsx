@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams } from '@/lib/router';
 import { ArrowLeft, Store, Scissors, Mail, MapPin, Star, ShieldCheck, Zap, Trash2, EyeOff, Eye } from 'lucide-react';
 import Card from '../../components/Card';
 import Button from '../../components/Button';

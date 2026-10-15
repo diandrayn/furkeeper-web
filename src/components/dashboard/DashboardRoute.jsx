@@ -1,4 +1,4 @@
-import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation } from '@/lib/router';
 import { useAuth } from '../../hooks/useAuth';
 import PawLoader from '../decorative/PawLoader';
 import Button from '../Button';
@@ -7,7 +7,7 @@ import Button from '../Button';
 // /dashboard/jasa/* (statusField = providerStatus). Only users with an
 // approved ("active") application can reach the dashboard; anyone mid-review
 // is routed to the application-status page.
-export default function DashboardRoute({ statusField }) {
+export default function DashboardRoute({ statusField, children }) {
   const { user, isLoggedIn, isLoading } = useAuth();
   const location = useLocation();
 
@@ -89,5 +89,5 @@ export default function DashboardRoute({ statusField }) {
     return <Navigate to="/status-pengajuan" replace />;
   }
 
-  return <Outlet />;
+  return children;
 }

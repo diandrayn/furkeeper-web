@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from '@/lib/router';
 import {
   LayoutDashboard,
   Package,
@@ -135,7 +135,7 @@ const PAGE_TITLES = {
   '/dashboard/jasa/penarikan': 'Pencairan Dana',
 };
 
-export default function DashboardLayout({ mode }) {
+export default function DashboardLayout({ mode, children }) {
   const { user, logout } = useAuth();
   const { storeProfile, providerProfile, storeId, serviceStoreId } = useDashboard();
   const { t } = useLanguage();
@@ -246,7 +246,7 @@ export default function DashboardLayout({ mode }) {
         </header>
 
         <main className="mx-auto max-w-[1400px] px-4 py-6 md:px-6 md:py-8">
-          <Outlet />
+          {children}
         </main>
       </div>
     </div>

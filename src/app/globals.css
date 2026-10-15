@@ -4,10 +4,10 @@
 
 :root {
   /* h2/h3/etc. use the regular body font (no longer the display font). */
-  --font-heading: 'Inter', sans-serif;
-  --font-body: 'Inter', sans-serif;
+  --font-heading: var(--font-inter), 'Inter', sans-serif;
+  --font-body: var(--font-inter), 'Inter', sans-serif;
   /* Distinctive display font — reserved for the page H1 only. */
-  --font-hero: 'Lilita One', cursive;
+  --font-hero: var(--font-lilita), 'Lilita One', cursive;
 }
 
 @layer base {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Navigate, useLocation, useNavigate } from '@/lib/router';
 import {
   LayoutDashboard,
   UserCheck,
@@ -108,7 +108,7 @@ function SidebarContent({ items, scopeLabel, onNavigate }) {
   );
 }
 
-export default function AdminLayout() {
+export default function AdminLayout({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -212,7 +212,7 @@ export default function AdminLayout() {
           {scopeLoading ? (
             <PawLoader label="Memuat hak akses..." />
           ) : pathAllowed ? (
-            <Outlet />
+            children
           ) : (
             <Navigate to="/admin" replace />
           )}

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router';
 import { X, Package, CalendarDays, MessageCircle, Megaphone, Briefcase, Star, Bell } from 'lucide-react';
 
 const iconByType = {

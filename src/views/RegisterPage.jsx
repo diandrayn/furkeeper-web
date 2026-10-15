@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router';
 import { ShoppingCart, Store, Scissors } from 'lucide-react';
 import AuthHeader from '../components/AuthHeader';
 import RoleCard from '../components/RoleCard';

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router';
 import { Clock, MapPin, Star, ChevronDown, ArrowRight } from 'lucide-react';
 import { districts } from '../data/mockData';
 import { useLanguage } from '../i18n/LanguageContext';

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from '@/lib/router';
 import { Camera, Image as ImageIcon, ExternalLink } from 'lucide-react';
 import Card from '../../components/Card';
 import Input from '../../components/Input';

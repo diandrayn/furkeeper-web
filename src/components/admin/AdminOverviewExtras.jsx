@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from '@/lib/router';
 import { Flag, ClipboardCheck, Receipt, ArrowRight } from 'lucide-react';
 import Card from '../Card';
 

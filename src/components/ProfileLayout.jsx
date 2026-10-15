@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink } from '@/lib/router';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -26,7 +26,7 @@ function tabClass({ isActive }) {
   }`;
 }
 
-export default function ProfileLayout() {
+export default function ProfileLayout({ children }) {
   const { t } = useLanguage();
   const { user } = useAuth();
   const hasUnreadReportReply = useUnreadReportReplies(user?.id);
@@ -56,7 +56,7 @@ export default function ProfileLayout() {
             ))}
           </nav>
           <div className="min-w-0">
-            <Outlet />
+            {children}
           </div>
         </div>
       </main>

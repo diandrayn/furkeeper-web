@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Heart, Star, Store, ShoppingCart } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link } from '@/lib/router';
 import ImagePlaceholder from './ImagePlaceholder';
 import Badge from './Badge';
 import { formatPrice, formatSoldCount } from '../utils/validation';

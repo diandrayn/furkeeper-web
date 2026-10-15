@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from '@/lib/router';
 import { Mail, Clock, MessageCircle, Send, Store, ShoppingBag, CalendarClock, Package, Scissors } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';

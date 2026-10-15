@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from '@/lib/router';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';

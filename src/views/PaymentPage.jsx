@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from '@/lib/router';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import WaveDivider from '../components/decorative/WaveDivider';

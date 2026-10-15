@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from '@/lib/router';
 import { Flag, Package, ShoppingBag, Scissors, CalendarClock, Store } from 'lucide-react';
 import Button from './Button';
 import Select from './Select';

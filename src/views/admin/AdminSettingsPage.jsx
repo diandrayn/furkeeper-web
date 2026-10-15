@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '@/lib/router';
 import { FileText, Plus, Pencil, Trash2, Wallet, ArrowRight } from 'lucide-react';
 import Card from '../../components/Card';
 import Input from '../../components/Input';

@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from '@/lib/router';
 import { Bell } from 'lucide-react';
 import NotificationItem from './NotificationItem';
 import { useNotifications } from '../hooks/useNotifications';

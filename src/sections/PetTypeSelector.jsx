@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router';
 import SectionHeader from '../components/SectionHeader';
 import { petTypes } from '../data/mockData';
 import { useLanguage } from '../i18n/LanguageContext';

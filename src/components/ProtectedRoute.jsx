@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from '@/lib/router';
 import { useAuth } from '../hooks/useAuth';
 import PawLoader from './decorative/PawLoader';
 
@@ -20,5 +20,5 @@ export default function ProtectedRoute({ children }) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  return children || <Outlet />;
+  return children;
 }

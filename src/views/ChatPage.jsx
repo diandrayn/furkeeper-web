@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from '@/lib/router';
 import Navbar from '../components/Navbar';
 import ChatInboxLayout from '../components/ChatInboxLayout';
 import ChatWindow from '../components/ChatWindow';

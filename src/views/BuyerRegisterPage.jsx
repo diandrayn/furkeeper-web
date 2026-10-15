@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from '@/lib/router';
 import AuthCard from '../components/AuthCard';
 import AuthHeader from '../components/AuthHeader';
 import AuthPageShell from '../components/AuthPageShell';

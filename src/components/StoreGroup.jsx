@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '@/lib/router';
 import { Store } from 'lucide-react';
 import CartItemRow from './CartItemRow';
 

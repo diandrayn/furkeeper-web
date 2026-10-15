@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '@/lib/router';
 import { MessageCircle, ShoppingCart } from 'lucide-react';
 import Logo from './Logo';
 import Button from './Button';

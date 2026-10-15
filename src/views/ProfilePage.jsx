@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from '@/lib/router';
 import { Camera, Store, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
 import Card from '../components/Card';
 import Input from '../components/Input';

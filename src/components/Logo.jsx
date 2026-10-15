@@ -1,5 +1,5 @@
 import { PawPrint } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link } from '@/lib/router';
 
 export default function Logo({ variant = 'dark', className = '' }) {
   const isLight = variant === 'light';

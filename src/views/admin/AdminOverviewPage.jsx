@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '@/lib/router';
 import { Users, UserCheck, Package, Scissors, Star, ShieldAlert, Store, Mail } from 'lucide-react';
 import StatCard from '../../components/dashboard/StatCard';
 import AdminOverviewExtras from '../../components/admin/AdminOverviewExtras';
