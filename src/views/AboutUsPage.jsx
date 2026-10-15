@@ -6,9 +6,12 @@ import WaveDivider from '../components/decorative/WaveDivider';
 import SectionHeader from '../components/SectionHeader';
 import Button from '../components/Button';
 import PawPrintPattern from '../components/decorative/PawPrintPattern';
-import aboutLove from '../assets/about-illustration-love.png';
-import aboutStory from '../assets/about-illustration-story.png';
-import aboutWhy from '../assets/about-illustration-why.png';
+import aboutLoveImg from '../assets/about-illustration-love.png';
+import aboutStoryImg from '../assets/about-illustration-story.png';
+import aboutWhyImg from '../assets/about-illustration-why.png';
+const aboutLove = aboutLoveImg.src;
+const aboutStory = aboutStoryImg.src;
+const aboutWhy = aboutWhyImg.src;
 import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../hooks/useAuth';
 

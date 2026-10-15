@@ -49,11 +49,11 @@ function readCart() {
 }
 
 export function CartProvider({ children }) {
-  const [items, setItems] = useState(() => (typeof window === 'undefined' ? [] : readCart()));
+  const [items, setItems] = useState([]);
+  const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items]);
+  useEffect(() => { setItems(readCart()); setLoaded(true); }, []);
+  useEffect(() => { if (!loaded) return; localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); }, [items, loaded]);
 
   const value = useMemo(() => {
     const addItem = (payload) => {

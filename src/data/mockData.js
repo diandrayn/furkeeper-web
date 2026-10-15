@@ -2,6 +2,10 @@ import kucingImg from '../assets/pets/kucing.jpg';
 import anjingImg from '../assets/pets/anjing.jpg';
 import lainnyaImg from '../assets/pets/lainnya.jpg';
 
+const kucing = kucingImg.src;
+const anjing = anjingImg.src;
+const lainnya = lainnyaImg.src;
+
 export const navLinks = [
   { label: 'Beranda', href: '/' },
   { label: 'Produk', href: '/produk' },
@@ -17,21 +21,21 @@ export const petTypes = [
     id: 'kucing',
     label: 'Kucing',
     ringColor: 'ring-teal-300',
-    image: kucingImg,
+    image: kucing,
     alt: 'Foto kucing peliharaan',
   },
   {
     id: 'anjing',
     label: 'Anjing',
     ringColor: 'ring-orange-200',
-    image: anjingImg,
+    image: anjing,
     alt: 'Foto anjing peliharaan',
   },
   {
     id: 'lainnya',
     label: 'Hewan Lain',
     ringColor: 'ring-green-200',
-    image: lainnyaImg,
+    image: lainnya,
     alt: 'Foto hewan peliharaan lainnya',
   },
 ];

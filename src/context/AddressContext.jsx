@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { savedAddresses } from '../data/mockCheckout';
 
 const STORAGE_KEY = 'furkeeper_addresses';
@@ -22,9 +22,9 @@ function withSingleDefault(list, defaultId) {
 }
 
 export function AddressProvider({ children }) {
-  const [addresses, setAddresses] = useState(() =>
-    typeof window === 'undefined' ? savedAddresses : readAddresses(),
-  );
+  const [addresses, setAddresses] = useState(savedAddresses);
+
+  useEffect(() => { setAddresses(readAddresses()); }, []);
 
   const addAddress = useCallback((address) => {
     setAddresses((prev) => {

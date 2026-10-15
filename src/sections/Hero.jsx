@@ -1,8 +1,10 @@
 import { ArrowRight } from 'lucide-react';
 import { useNavigate } from '@/lib/router';
 import Button from '../components/Button';
-import heroDog from '../assets/hero-dog.png';
-import heroCat from '../assets/hero-cat.png';
+import heroDogImg from '../assets/hero-dog.png';
+import heroCatImg from '../assets/hero-cat.png';
+const heroDog = heroDogImg.src;
+const heroCat = heroCatImg.src;
 import { useLanguage } from '../i18n/LanguageContext';
 
 export default function Hero() {

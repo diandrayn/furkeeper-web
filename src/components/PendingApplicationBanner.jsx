@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from '@/lib/router';
 import { Clock, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -7,13 +7,15 @@ const DISMISS_KEY = 'furkeeper_pending_banner_dismissed';
 
 export default function PendingApplicationBanner() {
   const { user, isLoggedIn } = useAuth();
-  const [dismissed, setDismissed] = useState(() => {
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
     try {
-      return sessionStorage.getItem(DISMISS_KEY) === '1';
+      setDismissed(sessionStorage.getItem(DISMISS_KEY) === '1');
     } catch {
-      return false;
+      /* ignore */
     }
-  });
+  }, []);
 
   if (!isLoggedIn || dismissed) return null;
 

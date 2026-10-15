@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { initialPets } from '../data/mockPets';
 
 const STORAGE_KEY = 'furkeeper_pets';
@@ -18,7 +18,9 @@ function persist(pets) {
 }
 
 export function PetProvider({ children }) {
-  const [pets, setPets] = useState(() => (typeof window === 'undefined' ? initialPets : readPets()));
+  const [pets, setPets] = useState(initialPets);
+
+  useEffect(() => { setPets(readPets()); }, []);
 
   const addPet = useCallback((pet) => {
     setPets((prev) => {

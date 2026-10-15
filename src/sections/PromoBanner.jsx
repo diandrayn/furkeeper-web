@@ -11,9 +11,12 @@ import { useLanguage } from '../i18n/LanguageContext';
 // dibatasi (bukan pakai aspect-ratio penuh) supaya banner nggak makan
 // terlalu banyak ruang vertikal di halaman — sesuaikan angka h-[...] di
 // bawah kalau mau lebih besar/kecil lagi.
-import banner1 from '../assets/banner.jpg';
-import banner2 from '../assets/banner-2.jpg';
-import banner3 from '../assets/banner-3.jpg';
+import banner1Img from '../assets/banner.jpg';
+import banner2Img from '../assets/banner-2.jpg';
+import banner3Img from '../assets/banner-3.jpg';
+const banner1 = banner1Img.src;
+const banner2 = banner2Img.src;
+const banner3 = banner3Img.src;
 
 const slides = [
   { id: 1, image: banner1, altKey: 'slide1', to: '/produk' },

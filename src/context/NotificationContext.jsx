@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { seedNotifications } from '../data/mockNotifications';
 
 const STORAGE_KEY = 'furkeeper_notifications';
@@ -25,9 +25,9 @@ function persist(notifications) {
 }
 
 export function NotificationProvider({ children }) {
-  const [notifications, setNotifications] = useState(() =>
-    typeof window === 'undefined' ? seedNotifications : readStored(),
-  );
+  const [notifications, setNotifications] = useState(seedNotifications);
+
+  useEffect(() => { setNotifications(readStored()); }, []);
   const [toasts, setToasts] = useState([]);
 
   const dismissToast = useCallback((id) => {

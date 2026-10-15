@@ -24,9 +24,16 @@ function resolve(dict, path) {
 }
 
 export function LanguageProvider({ children }) {
-  const [lang, setLangState] = useState(getInitialLang);
+  const [lang, setLangState] = useState('id');
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    setLangState(getInitialLang());
+    setLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
     try {
       window.localStorage.setItem(STORAGE_KEY, lang);
     } catch {
@@ -35,7 +42,7 @@ export function LanguageProvider({ children }) {
     if (typeof document !== 'undefined') {
       document.documentElement.lang = lang;
     }
-  }, [lang]);
+  }, [lang, loaded]);
 
   const setLang = (next) => setLangState(next === 'en' ? 'en' : 'id');
   const toggleLang = () => setLangState((prev) => (prev === 'id' ? 'en' : 'id'));

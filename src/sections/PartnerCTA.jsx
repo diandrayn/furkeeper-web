@@ -4,8 +4,10 @@ import { useLanguage } from '../i18n/LanguageContext';
 import sellerImg from '../assets/become-seller.jpg';
 import serviceImg from '../assets/become-service.jpg';
 
+const sellerImage = sellerImg.src;
+const serviceImage = serviceImg.src;
 const partnerCardKeys = ['seller', 'service'];
-const partnerImages = { seller: sellerImg, service: serviceImg };
+const partnerImages = { seller: sellerImage, service: serviceImage };
 
 // Kartu "Jadi Penjual"/"Jadi Penyedia Jasa" tidak boleh melempar akun mitra
 // yang SUDAH terdaftar ke formulir pendaftaran akun baru (/register/partner)
