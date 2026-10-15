@@ -29,7 +29,7 @@ function firstAvailableDate() {
 }
 
 export default function BookingPage() {
-  const { serviceId } = useParams();
+  const { id: serviceId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useLanguage();

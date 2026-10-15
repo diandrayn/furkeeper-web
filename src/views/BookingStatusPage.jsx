@@ -23,7 +23,7 @@ import { formatDateId } from '../utils/status';
 import { useLanguage } from '../i18n/LanguageContext';
 
 export default function BookingStatusPage() {
-  const { bookingId } = useParams();
+  const { id: bookingId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t, lang } = useLanguage();
