@@ -157,7 +157,7 @@ function MyMessagesTab({ highlightId }) {
                 <p className="truncate text-sm font-semibold text-text-primary">
                   {message.subject !== '-' ? message.subject : message.body.slice(0, 60)}
                 </p>
-                <p className="truncate text-xs text-text-secondary">{formatRelativeTimeId(message.createdAt)}</p>
+                <p className="truncate text-xs text-text-secondary" suppressHydrationWarning>{formatRelativeTimeId(message.createdAt)}</p>
               </div>
               <span className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusBadgeClass(message.status)}`}>
                 {message.status === 'belum_dibalas' ? t('bantuanSaya.statusUnanswered') : t('bantuanSaya.statusAnswered')}
@@ -293,7 +293,7 @@ function MyReportsTab({ highlightId }) {
                   {REPORT_CATEGORY_LABELS[report.category] || report.category}
                 </p>
                 <p className="truncate text-xs text-text-secondary">
-                  {report.reportedStoreName} &middot; {formatRelativeTimeId(report.createdAt)}
+                  <span suppressHydrationWarning>{report.reportedStoreName} &middot; {formatRelativeTimeId(report.createdAt)}</span>
                 </p>
               </div>
               <span className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusBadgeClass(report.status)}`}>

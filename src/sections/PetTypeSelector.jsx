@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from '@/lib/router';
 import SectionHeader from '../components/SectionHeader';
 import { petTypes } from '../data/mockData';
@@ -17,9 +17,11 @@ function shuffle(array) {
 export default function PetTypeSelector() {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  // Randomize card order on every mount/reload so the dog/cat/other photos
-  // don't always sit in the same position.
-  const shuffledPetTypes = useMemo(() => shuffle(petTypes), []);
+  const [shuffledPetTypes, setShuffledPetTypes] = useState(petTypes);
+
+  useEffect(() => {
+    setShuffledPetTypes(shuffle(petTypes));
+  }, []);
 
   return (
     <section className="mx-auto max-w-container px-4 py-16 md:px-6 md:py-20 lg:px-8 lg:py-24">

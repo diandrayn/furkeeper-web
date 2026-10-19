@@ -22,7 +22,7 @@ export default function ConversationListItem({ conversation, active, onClick }) 
         <div className="flex items-center justify-between gap-2">
           <p className="truncate text-sm font-semibold text-text-primary">{participant.name}</p>
           {lastMessage && (
-            <span className="shrink-0 text-[11px] text-text-secondary">
+            <span className="shrink-0 text-[11px] text-text-secondary" suppressHydrationWarning>
               {formatRelativeTimeId(lastMessage.timestamp)}
             </span>
           )}

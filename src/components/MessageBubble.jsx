@@ -13,7 +13,7 @@ export default function MessageBubble({ text, timestamp, isMine }) {
         >
           {text}
         </div>
-        <span className="mt-1 px-1 text-[11px] text-text-secondary">
+        <span className="mt-1 px-1 text-[11px] text-text-secondary" suppressHydrationWarning>
           {formatRelativeTimeId(timestamp)}
         </span>
       </div>

@@ -30,7 +30,7 @@ function BookingDetailModal({ booking, onClose, onRespond, t, lang }) {
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="font-heading text-lg font-bold text-text-primary">{booking.id}</h2>
-            <p className="text-xs text-text-secondary">{t('dashboardBookings.submittedAt').replace('{value}', formatRelativeTimeId(booking.createdAt))}</p>
+            <p className="text-xs text-text-secondary" suppressHydrationWarning>{t('dashboardBookings.submittedAt').replace('{value}', formatRelativeTimeId(booking.createdAt))}</p>
           </div>
           <button
             type="button"

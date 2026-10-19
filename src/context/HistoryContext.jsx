@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { seedBookings, seedOrders } from '../data/mockHistory';
 
 const STORAGE_KEY = 'furkeeper_history';
@@ -32,9 +32,13 @@ function persist(state) {
 }
 
 export function HistoryProvider({ children }) {
-  const [state, setState] = useState(() =>
-    typeof window === 'undefined' ? defaultState() : readHistory(),
-  );
+  const [state, setState] = useState(defaultState());
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    setState(readHistory());
+    setLoaded(true);
+  }, []);
 
   const upsertOrder = useCallback((order) => {
     setState((prev) => {
@@ -42,10 +46,10 @@ export function HistoryProvider({ children }) {
         ...prev,
         orders: [order, ...prev.orders.filter((item) => item.id !== order.id)],
       };
-      persist(next);
+      if (loaded) persist(next);
       return next;
     });
-  }, []);
+  }, [loaded]);
 
   const upsertBooking = useCallback((booking) => {
     setState((prev) => {
@@ -53,10 +57,10 @@ export function HistoryProvider({ children }) {
         ...prev,
         bookings: [booking, ...prev.bookings.filter((item) => item.id !== booking.id)],
       };
-      persist(next);
+      if (loaded) persist(next);
       return next;
     });
-  }, []);
+  }, [loaded]);
 
   const updateOrder = useCallback((id, patch) => {
     setState((prev) => {
@@ -64,10 +68,10 @@ export function HistoryProvider({ children }) {
         ...prev,
         orders: prev.orders.map((item) => (item.id === id ? { ...item, ...patch } : item)),
       };
-      persist(next);
+      if (loaded) persist(next);
       return next;
     });
-  }, []);
+  }, [loaded]);
 
   const updateBooking = useCallback((id, patch) => {
     setState((prev) => {
@@ -75,10 +79,10 @@ export function HistoryProvider({ children }) {
         ...prev,
         bookings: prev.bookings.map((item) => (item.id === id ? { ...item, ...patch } : item)),
       };
-      persist(next);
+      if (loaded) persist(next);
       return next;
     });
-  }, []);
+  }, [loaded]);
 
   const getOrder = useCallback((id) => state.orders.find((item) => item.id === id) || null, [state.orders]);
   const getBooking = useCallback(

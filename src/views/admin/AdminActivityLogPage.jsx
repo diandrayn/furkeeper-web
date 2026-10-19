@@ -166,6 +166,7 @@ export default function AdminActivityLogPage() {
                     <p
                       className="shrink-0 text-xs text-text-secondary"
                       title={formatDateTimeId(log.createdAt)}
+                      suppressHydrationWarning
                     >
                       {formatRelativeTimeId(log.createdAt)}
                     </p>

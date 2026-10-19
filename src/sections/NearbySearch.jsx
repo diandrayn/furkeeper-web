@@ -39,7 +39,9 @@ export default function NearbySearch() {
       })
       .catch((err) => {
         if (!active) return;
-        setError(err.message || 'Gagal memuat toko.');
+        console.error('NearbySearch fetchStoreList error:', err);
+        const msg = err?.message || err?.details || err?.error_description || JSON.stringify(err);
+        setError(msg || 'Gagal memuat toko.');
         setLoading(false);
       });
     return () => {

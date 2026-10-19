@@ -39,7 +39,7 @@ export default function NotificationItem({ notification, onClick }) {
           {notification.title}
         </p>
         <p className="mt-0.5 line-clamp-2 text-xs text-text-secondary">{notification.message}</p>
-        <p className="mt-1 text-[11px] text-text-secondary">
+        <p className="mt-1 text-[11px] text-text-secondary" suppressHydrationWarning>
           {formatRelativeTimeId(notification.timestamp)}
         </p>
       </div>

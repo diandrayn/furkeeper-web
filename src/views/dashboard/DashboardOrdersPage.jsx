@@ -30,7 +30,7 @@ function OrderDetailModal({ order, onClose, onRespond, onCancel, t, lang }) {
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="font-heading text-lg font-bold text-text-primary">{order.id}</h2>
-            <p className="text-xs text-text-secondary">{formatRelativeTimeId(order.createdAt)}</p>
+            <p className="text-xs text-text-secondary" suppressHydrationWarning>{formatRelativeTimeId(order.createdAt)}</p>
           </div>
           <button
             type="button"
@@ -249,7 +249,7 @@ export default function DashboardOrdersPage() {
                       {formatRupiah(order.totalPrice)}
                     </td>
                     <td className="whitespace-nowrap px-5 py-3.5 text-text-secondary">
-                      {formatRelativeTimeId(order.createdAt)}
+                      <span suppressHydrationWarning>{formatRelativeTimeId(order.createdAt)}</span>
                     </td>
                     <td className="whitespace-nowrap px-5 py-3.5">
                       <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge(order.status, lang)}`}>

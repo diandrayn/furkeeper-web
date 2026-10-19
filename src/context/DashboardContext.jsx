@@ -68,9 +68,13 @@ export const DashboardContext = createContext(null);
 
 export function DashboardProvider({ children }) {
   const { user } = useAuth();
-  const [state, setState] = useState(() =>
-    typeof window === 'undefined' ? defaultState() : readStored(),
-  );
+  const [state, setState] = useState(defaultState());
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    setState(readStored());
+    setLoaded(true);
+  }, []);
 
   // --- Produk (toko) — real Supabase data, kept separate from the
   // localStorage-mocked `state` above. ---
@@ -145,10 +149,10 @@ export function DashboardProvider({ children }) {
   const update = useCallback((updater) => {
     setState((prev) => {
       const next = typeof updater === 'function' ? updater(prev) : { ...prev, ...updater };
-      persist(next);
+      if (loaded) persist(next);
       return next;
     });
-  }, []);
+  }, [loaded]);
 
   // ---- Profil toko/jasa — when the application is active, load what's
   // actually in the `stores` table (merged over the demo seed) so the

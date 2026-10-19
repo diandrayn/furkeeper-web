@@ -97,7 +97,7 @@ export default function AdminHelpMessagesPage() {
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-text-primary">{message.subject !== '-' ? message.subject : message.body.slice(0, 60)}</p>
-                    <p className="truncate text-xs text-text-secondary">
+                    <p className="truncate text-xs text-text-secondary" suppressHydrationWarning>
                       {message.name} ({message.email}) &middot; {formatRelativeTimeId(message.createdAt)}
                     </p>
                   </div>

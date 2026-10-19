@@ -62,7 +62,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-10 flex flex-col items-center gap-2 border-t border-white/10 pt-6 text-center text-xs text-white/50 sm:flex-row sm:justify-between">
-          <p>© {new Date().getFullYear()} FurKeeper. {t('footer.hakCipta')}</p>
+          <p suppressHydrationWarning>© {new Date().getFullYear()} FurKeeper. {t('footer.hakCipta')}</p>
           <div className="flex items-center gap-4">
             <Link
               to="/syarat-ketentuan"

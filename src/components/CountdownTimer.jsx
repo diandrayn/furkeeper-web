@@ -9,13 +9,16 @@ function formatRemaining(ms) {
 }
 
 export default function CountdownTimer({ deadline, duration }) {
-  const endsAt = deadline || Date.now() + (duration || 24 * 60 * 60) * 1000;
-  const [remaining, setRemaining] = useState(endsAt - Date.now());
+  const [remaining, setRemaining] = useState(0);
+  const [endsAt, setEndsAt] = useState(0);
 
   useEffect(() => {
-    const timer = setInterval(() => setRemaining(endsAt - Date.now()), 1000);
+    const computedEndsAt = deadline || Date.now() + (duration || 24 * 60 * 60) * 1000;
+    setEndsAt(computedEndsAt);
+    setRemaining(computedEndsAt - Date.now());
+    const timer = setInterval(() => setRemaining(computedEndsAt - Date.now()), 1000);
     return () => clearInterval(timer);
-  }, [endsAt]);
+  }, [deadline, duration]);
 
   return (
     <p className="text-sm font-medium text-brand-burgundy">

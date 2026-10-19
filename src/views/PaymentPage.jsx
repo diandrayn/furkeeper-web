@@ -64,7 +64,10 @@ export default function PaymentPage() {
 
   const total = isBooking ? booking?.price || 0 : orders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
   const idLabel = isBooking ? booking?.id || ids[0] : orders[0]?.id || ids[0];
-  const deadline = Date.now() + 24 * 60 * 60 * 1000;
+  const [deadline, setDeadline] = useState(Date.now());
+  useEffect(() => {
+    setDeadline(Date.now() + 24 * 60 * 60 * 1000);
+  }, []);
 
   const handleSuccess = () => {
     if (isBooking) {

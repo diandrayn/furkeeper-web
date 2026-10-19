@@ -124,7 +124,7 @@ export default function AdminReportsPage() {
                         {REPORT_PRIORITY_LABELS[report.priority]}
                       </span>
                     </div>
-                    <p className="truncate text-xs text-text-secondary">
+                    <p className="truncate text-xs text-text-secondary" suppressHydrationWarning>
                       {report.reporterName} melaporkan {report.reportedUserName || report.reportedStoreName || 'pihak lain'} &middot;{' '}
                       {formatRelativeTimeId(report.createdAt)}
                     </p>

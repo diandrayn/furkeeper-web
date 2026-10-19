@@ -136,7 +136,7 @@ export default function DashboardOverviewPage({ mode }) {
                     <p className="truncate text-sm font-semibold text-text-primary">
                       {isJasa ? item.serviceName : item.productName}
                     </p>
-                    <p className="mt-0.5 text-xs text-text-secondary">
+                    <p className="mt-0.5 text-xs text-text-secondary" suppressHydrationWarning>
                       {item.buyerName} &middot; {formatRelativeTimeId(item.createdAt)}
                     </p>
                   </div>
