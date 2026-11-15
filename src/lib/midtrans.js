@@ -79,6 +79,11 @@ export async function getMidtransStatus(orderId) {
   return core().transaction.status(orderId);
 }
 
+/** Close a Snap transaction at Midtrans so the old token can no longer be paid. */
+export async function expireMidtransTransaction(orderId) {
+  return core().transaction.expire(orderId);
+}
+
 export function verifyMidtransSignature({
   order_id,
   status_code,

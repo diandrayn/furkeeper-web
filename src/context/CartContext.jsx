@@ -124,8 +124,9 @@ export function CartProvider({ children }) {
     };
 
     // Remember the items that were sent to checkout. The active cart is
-    // cleared while payment is pending; if the payment fails or expires we
-    // restore this snapshot so the buyer does not have to re-add products.
+    // cleared while payment is pending; a failed/expired payment keeps the
+    // order alive (the buyer can pay again), so restoring is only offered as
+    // an explicit action on the failed-payment page.
     const saveCheckoutSnapshot = (lines) => {
       const source = Array.isArray(lines) && lines.length ? lines : items.filter((item) => item.checked);
       writeSnapshot(source.map((item) => ({ ...item })));

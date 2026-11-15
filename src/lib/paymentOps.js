@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { HttpError } from '@/lib/http';
 import { notify } from '@/lib/notify';
-import { createSnapTransaction, getMidtransStatus } from '@/lib/midtrans';
+import { createSnapTransaction, expireMidtransTransaction, getMidtransStatus } from '@/lib/midtrans';
 
 const PAYMENT_EXPIRY_HOURS = 24;
 const FINAL_STATUSES = ['paid', 'expired', 'failed', 'refunded'];
@@ -100,7 +100,7 @@ async function notifyPaymentResult(result) {
       body: paid
         ? `Pesanan #${firstOrder.slice(0, 8)} sudah dibayar dan sedang diproses.`
         : failed
-          ? `Pembayaran pesanan #${firstOrder.slice(0, 8)} ${status === 'expired' ? 'kedaluwarsa' : 'gagal'}.`
+          ? `Pembayaran pesanan #${firstOrder.slice(0, 8)} ${status === 'expired' ? 'kedaluwarsa' : 'gagal'}. Pesanan masih tersimpan — silakan bayar ulang.`
           : `Status pembayaran pesanan #${firstOrder.slice(0, 8)} menjadi ${status}.`,
       link: `/pesanan/${firstOrder}`,
     });
@@ -204,30 +204,21 @@ async function applyPaymentStatus(payment, payload) {
         });
       }
     } else if (failureNow) {
+      // A failed/expired payment must NOT cancel the order: the buyer is
+      // allowed to create a new payment for the same order (the stock stays
+      // reserved until the buyer or seller cancels the order explicitly).
       for (const order of fresh.orders) {
-        const moved = await tx.orders.updateMany({
-          where: { id: order.id, status: 'pending_payment' },
-          data: { status: 'cancelled' },
-        });
-        if (moved.count === 0) continue;
+        if (order.status !== 'pending_payment') continue;
         await tx.order_status_history.create({
           data: {
             order_id: order.id,
-            status: 'cancelled',
+            status: 'pending_payment',
             from_status: 'pending_payment',
-            to_status: 'cancelled',
+            to_status: 'pending_payment',
             changed_by: null,
-            note: `Pembayaran ${nextStatus}`,
+            note: `Pembayaran ${nextStatus} — pesanan menunggu pembayaran ulang`,
           },
         });
-        for (const item of order.items) {
-          if (item.product_id) {
-            await tx.products.update({
-              where: { id: item.product_id },
-              data: { stock: { increment: item.quantity } },
-            });
-          }
-        }
       }
     }
 
@@ -242,6 +233,34 @@ async function applyPaymentStatus(payment, payload) {
     await notifyPaymentResult(result);
   }
   return result;
+}
+
+/**
+ * Close a payment that is being replaced by a new one. The Midtrans token is
+ * expired first so the buyer cannot pay both the old and the new transaction.
+ */
+async function retireSupersededPayment(payment, orderIds) {
+  if (!payment || ['paid', 'refunded'].includes(payment.status)) return;
+
+  const linked = await prisma.orders.findMany({
+    where: { payment_id: payment.id },
+    select: { id: true },
+  });
+  const linkedIds = linked.map((row) => row.id);
+  if (!linkedIds.every((id) => orderIds.includes(id))) return;
+
+  try {
+    await expireMidtransTransaction(payment.midtrans_order_id);
+  } catch (err) {
+    // 404 means Midtrans never saw this transaction (the Snap token was
+    // created but never opened), so there is nothing to expire.
+    console.warn('[midtrans] gagal menutup transaksi lama:', err?.message || err);
+  }
+
+  await prisma.payments.updateMany({
+    where: { id: payment.id, status: { in: ['pending', 'challenge'] } },
+    data: { status: 'expired' },
+  });
 }
 
 export async function createPaymentForOrders(user, orderIds) {
@@ -264,6 +283,12 @@ export async function createPaymentForOrders(user, orderIds) {
   const existing = orders.map((order) => order.payment).find(Boolean);
   if (existing) {
     if (existing.status === 'paid') throw new HttpError(400, 'Pesanan ini sudah dibayar.');
+    if (existing.status === 'challenge') {
+      throw new HttpError(
+        409,
+        'Pembayaran pesanan ini masih ditinjau Midtrans. Tunggu hasilnya sebelum membayar lagi.',
+      );
+    }
 
     const stillValid =
       existing.status === 'pending' &&
@@ -281,6 +306,10 @@ export async function createPaymentForOrders(user, orderIds) {
         return mapPaymentRow({ ...existing, orders });
       }
     }
+
+    // The old payment is expired/failed (or no longer covers exactly these
+    // orders). Close it before issuing a new token so nothing is paid twice.
+    await retireSupersededPayment(existing, ids);
   }
 
   const grossAmount = orders.reduce((sum, order) => sum + order.total, 0);

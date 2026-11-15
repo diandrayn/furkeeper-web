@@ -52,10 +52,7 @@ export default function PaymentFailedPage() {
           if (!active) return;
           setPayment(row);
         }
-        if (row.status === 'failed' || row.status === 'expired') {
-          const count = restoreSnapshotRef.current();
-          if (count) setRestored(true);
-        } else if (row.status === 'paid') {
+        if (row.status === 'paid') {
           navigate(`/pembayaran/sukses?payment=${encodeURIComponent(paymentId)}`, { replace: true });
         }
       } catch (err) {
@@ -83,9 +80,6 @@ export default function PaymentFailedPage() {
       setPayment(row);
       if (row.status === 'paid') {
         navigate(`/pembayaran/sukses?payment=${encodeURIComponent(paymentId)}`, { replace: true });
-      } else if (row.status === 'failed' || row.status === 'expired') {
-        const count = restoreSnapshotRef.current();
-        if (count) setRestored(true);
       }
     } catch (err) {
       console.error('PaymentFailedPage status check failed:', err);
@@ -93,6 +87,16 @@ export default function PaymentFailedPage() {
     } finally {
       setChecking(false);
     }
+  };
+
+  const handleRetry = () => {
+    if (orderId) navigate(`/pembayaran/${encodeURIComponent(orderId)}`);
+    else navigate('/keranjang');
+  };
+
+  const handleRestoreCart = () => {
+    const count = restoreSnapshotRef.current();
+    setRestored(Boolean(count));
   };
 
   return (
@@ -120,7 +124,7 @@ export default function PaymentFailedPage() {
             : isRefunded
               ? t('payment.refundedDesc')
               : confirmedFailure
-                ? t('payment.failedDesc')
+                ? t(payment?.status === 'expired' ? 'payment.expiredDesc' : 'payment.failedDesc')
                 : t('payment.verifyingDesc')
         }
       >
@@ -150,10 +154,10 @@ export default function PaymentFailedPage() {
             <Button
               variant="primary"
               className="flex-1"
-              onClick={() => navigate('/keranjang')}
+              onClick={handleRetry}
               disabled={loading}
             >
-              {t('payment.tryAgain')}
+              {t('payment.retryPay')}
             </Button>
           )}
           {needsVerification && (
@@ -180,6 +184,11 @@ export default function PaymentFailedPage() {
             </Link>
           )}
         </div>
+        {confirmedFailure && !isRefunded && !restored && (
+          <Button variant="ghost" size="sm" className="mt-3" onClick={handleRestoreCart}>
+            {t('payment.restoreToCart')}
+          </Button>
+        )}
       </PaymentResultLayout>
       <WaveDivider topColor="text-brand-cream" bottomColor="bg-brand-burgundy" />
       <Footer />

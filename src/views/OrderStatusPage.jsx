@@ -174,6 +174,8 @@ export default function OrderStatusPage() {
   const canPayNow =
     order.status === 'pending_payment' &&
     (!payment || ['pending', 'failed', 'expired'].includes(payment.status));
+  const paymentNeedsRetry =
+    Boolean(payment) && ['failed', 'expired'].includes(payment.status) && order.status === 'pending_payment';
 
   return (
     <>
@@ -227,10 +229,13 @@ export default function OrderStatusPage() {
                   {t('payment.expiresAt')}: <span className="font-medium text-text-primary">{formatDateId(payment.expiresAt)}</span>
                 </p>
               )}
+              {paymentNeedsRetry && (
+                <p className="text-sm text-status-warning">{t('orderStatus.payAgainHint')}</p>
+              )}
             </div>
             {canPayNow && (
               <Button variant="primary" onClick={() => navigate(`/pembayaran/${encodeURIComponent(order.id)}`)}>
-                {t('orderStatus.payNow')}
+                {paymentNeedsRetry ? t('orderStatus.payAgain') : t('orderStatus.payNow')}
               </Button>
             )}
           </div>
