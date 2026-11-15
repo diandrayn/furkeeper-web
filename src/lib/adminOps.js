@@ -3,6 +3,11 @@ import { HttpError } from '@/lib/http';
 import { logAdminActivity } from '@/lib/adminLog';
 import { notify } from '@/lib/notify';
 import { mapDashboardProduct, mapDashboardService } from '@/lib/mappers';
+import {
+  reconcilePayments as reconcilePaymentsCore,
+  refundPayment as refundPaymentCore,
+  resolvePaymentChallenge as resolvePaymentChallengeCore,
+} from '@/lib/paymentOps';
 
 const SUMMARY_ORDER_STATUSES = ['processing', 'shipped', 'completed'];
 const SUMMARY_BOOKING_STATUSES = ['confirmed', 'in_progress', 'completed'];
@@ -416,8 +421,12 @@ function mapAdminOrderRow(row) {
     createdAt: row.created_at,
     payment: row.payment
       ? {
+          id: row.payment.id,
           status: row.payment.status,
           method: row.payment.payment_type || null,
+          grossAmount: row.payment.gross_amount,
+          fraudStatus: row.payment.fraud_status || null,
+          midtransOrderId: row.payment.midtrans_order_id,
           paidAt: row.payment.paid_at,
           expiresAt: row.payment.expires_at,
         }
@@ -454,6 +463,36 @@ export async function fetchAllOrders({ search = '', status = 'all' } = {}) {
     );
   }
   return mapped;
+}
+
+export async function refundPayment(admin, paymentId, reason = null) {
+  const result = await refundPaymentCore(paymentId, reason);
+  if (result.changed) {
+    await logAdminActivity(admin, 'refund_payment', 'payment', paymentId, null, {
+      reason,
+      cancelledOrderIds: result.cancelledOrderIds,
+      midtrans: result.midtrans,
+    });
+  }
+  return result;
+}
+
+export async function resolvePaymentChallenge(admin, paymentId, decision, reason = null) {
+  const result = await resolvePaymentChallengeCore(paymentId, decision, reason);
+  await logAdminActivity(admin, 'resolve_payment_challenge', 'payment', paymentId, null, {
+    decision,
+    reason,
+    midtrans: result.midtrans,
+  });
+  return result;
+}
+
+export async function reconcilePayments(admin) {
+  const result = await reconcilePaymentsCore();
+  if (result.checked > 0 || result.cancelledOrderIds.length > 0) {
+    await logAdminActivity(admin, 'reconcile_payments', 'payment', null, null, result);
+  }
+  return result;
 }
 
 export async function fetchAllBookings({ search = '', status = 'all' } = {}) {

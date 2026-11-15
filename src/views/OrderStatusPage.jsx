@@ -159,11 +159,14 @@ export default function OrderStatusPage() {
   }
 
   const label = statusLabel(order.status, lang);
-  const canCancel = order.status === 'pending_payment';
+  const payment = order.payment || null;
+  // Cancelling is only allowed while no money is held. A challenge needs an
+  // admin decision and a paid order needs an admin refund first.
+  const canCancel =
+    order.status === 'pending_payment' && !['paid', 'challenge'].includes(payment?.status);
   const canConfirm = order.status === 'shipped';
   const canReview = order.status === 'completed' && !reviewed;
 
-  const payment = order.payment || null;
   const paymentStatus = payment?.status || (order.status === 'pending_payment' ? 'pending' : null);
   const paymentMethodKey = payment?.method ? paymentTypeKey(payment.method) : null;
   const paymentMethodLabel = payment?.method
@@ -176,6 +179,8 @@ export default function OrderStatusPage() {
     (!payment || ['pending', 'failed', 'expired'].includes(payment.status));
   const paymentNeedsRetry =
     Boolean(payment) && ['failed', 'expired'].includes(payment.status) && order.status === 'pending_payment';
+  const paymentUnderReview = payment?.status === 'challenge' && order.status === 'pending_payment';
+  const paymentRefunded = payment?.status === 'refunded';
 
   return (
     <>
@@ -231,6 +236,12 @@ export default function OrderStatusPage() {
               )}
               {paymentNeedsRetry && (
                 <p className="text-sm text-status-warning">{t('orderStatus.payAgainHint')}</p>
+              )}
+              {paymentUnderReview && (
+                <p className="text-sm text-status-warning">{t('orderStatus.paymentUnderReview')}</p>
+              )}
+              {paymentRefunded && (
+                <p className="text-sm text-text-secondary">{t('orderStatus.paymentRefundedNote')}</p>
               )}
             </div>
             {canPayNow && (

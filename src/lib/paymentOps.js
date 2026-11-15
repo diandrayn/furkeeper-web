@@ -2,10 +2,23 @@ import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { HttpError } from '@/lib/http';
 import { notify } from '@/lib/notify';
-import { createSnapTransaction, expireMidtransTransaction, getMidtransStatus } from '@/lib/midtrans';
+import {
+  approveOrDenyMidtransTransaction,
+  createSnapTransaction,
+  expireMidtransTransaction,
+  getMidtransStatus,
+  refundMidtransTransaction,
+} from '@/lib/midtrans';
 
 const PAYMENT_EXPIRY_HOURS = 24;
 const FINAL_STATUSES = ['paid', 'expired', 'failed', 'refunded'];
+// Orders whose payment failed/expired (or that never got a payment) are
+// cancelled automatically during reconciliation once they are this old.
+const STALE_ORDER_HOURS = Number(process.env.ORDER_AUTO_CANCEL_HOURS || 72);
+// A pending payment row with no Snap token that is younger than this is still
+// being built by another request, so a parallel checkout must not replace it.
+const CLAIM_WINDOW_MS = 2 * 60 * 1000;
+const UNKNOWN_TRANSACTION = /HTTP status code:\s*404|Transaction doesn't exist/i;
 
 const paymentInclude = {
   orders: {
@@ -88,22 +101,46 @@ function collectOwnerIds(orders) {
 }
 
 async function notifyPaymentResult(result) {
-  const { status, orderIds, buyerId, ownerIds } = result;
+  const { status, orderIds, buyerId, ownerIds, latePaidOrderIds = [] } = result;
   const firstOrder = orderIds[0];
 
   if (buyerId && firstOrder) {
     const paid = status === 'paid';
     const failed = ['expired', 'failed'].includes(status);
+    const latePaid = latePaidOrderIds.length > 0;
     await notify(buyerId, {
       type: 'payment_status',
-      title: paid ? 'Pembayaran berhasil' : `Status pembayaran: ${status}`,
-      body: paid
-        ? `Pesanan #${firstOrder.slice(0, 8)} sudah dibayar dan sedang diproses.`
-        : failed
-          ? `Pembayaran pesanan #${firstOrder.slice(0, 8)} ${status === 'expired' ? 'kedaluwarsa' : 'gagal'}. Pesanan masih tersimpan — silakan bayar ulang.`
-          : `Status pembayaran pesanan #${firstOrder.slice(0, 8)} menjadi ${status}.`,
+      title: latePaid
+        ? 'Pembayaran perlu ditindaklanjuti'
+        : paid
+          ? 'Pembayaran berhasil'
+          : `Status pembayaran: ${status}`,
+      body: latePaid
+        ? `Pembayaran pesanan #${firstOrder.slice(0, 8)} diterima setelah pesanan dibatalkan. Tim FurKeeper akan memproses pengembalian dana (refund).`
+        : paid
+          ? `Pesanan #${firstOrder.slice(0, 8)} sudah dibayar dan sedang diproses.`
+          : failed
+            ? `Pembayaran pesanan #${firstOrder.slice(0, 8)} ${status === 'expired' ? 'kedaluwarsa' : 'gagal'}. Pesanan masih tersimpan — silakan bayar ulang.`
+            : `Status pembayaran pesanan #${firstOrder.slice(0, 8)} menjadi ${status}.`,
       link: `/pesanan/${firstOrder}`,
     });
+  }
+
+  if (latePaidOrderIds.length) {
+    const admins = await prisma.profiles.findMany({
+      where: { role: 'admin' },
+      select: { id: true },
+    });
+    await Promise.all(
+      admins.map((admin) =>
+        notify(admin.id, {
+          type: 'payment_refund_needed',
+          title: 'Pembayaran masuk setelah pesanan dibatalkan',
+          body: `Pesanan #${latePaidOrderIds[0].slice(0, 8)} sudah dibatalkan tetapi pembayarannya tetap masuk. Perlu refund manual.`,
+          link: '/admin/transaksi',
+        }),
+      ),
+    );
   }
 
   if (status === 'paid') {
@@ -185,13 +222,34 @@ async function applyPaymentStatus(payment, payload) {
       });
     }
 
+    const latePaidOrderIds = [];
+
     if (paidNow) {
       for (const order of fresh.orders) {
         const moved = await tx.orders.updateMany({
           where: { id: order.id, status: 'pending_payment' },
           data: { status: 'processing' },
         });
-        if (moved.count === 0) continue;
+        if (moved.count === 0) {
+          // The buyer paid but the order is no longer waiting for payment,
+          // typically because it was cancelled just before the webhook
+          // arrived. The money did arrive, so flag it for a manual refund
+          // instead of silently ignoring it.
+          if (order.status === 'cancelled') {
+            latePaidOrderIds.push(order.id);
+            await tx.order_status_history.create({
+              data: {
+                order_id: order.id,
+                status: 'cancelled',
+                from_status: 'cancelled',
+                to_status: 'cancelled',
+                changed_by: null,
+                note: 'Pembayaran diterima setelah pesanan dibatalkan — perlu refund manual',
+              },
+            });
+          }
+          continue;
+        }
         await tx.order_status_history.create({
           data: {
             order_id: order.id,
@@ -226,6 +284,7 @@ async function applyPaymentStatus(payment, payload) {
       ...summary,
       status: nextStatus,
       unchanged: false,
+      latePaidOrderIds,
     };
   });
 
@@ -287,6 +346,21 @@ export async function createPaymentForOrders(user, orderIds) {
       throw new HttpError(
         409,
         'Pembayaran pesanan ini masih ditinjau Midtrans. Tunggu hasilnya sebelum membayar lagi.',
+      );
+    }
+
+    // The row was created but the Snap token is not written yet, which means
+    // another request is still talking to Midtrans. Refusing here stops a
+    // double click on "Bayar" from producing two payable tokens.
+    const existingCreatedAt = existing.created_at ? new Date(existing.created_at).getTime() : 0;
+    if (
+      existing.status === 'pending'
+      && !existing.snap_token
+      && Date.now() - existingCreatedAt < CLAIM_WINDOW_MS
+    ) {
+      throw new HttpError(
+        409,
+        'Pembayaran lain sedang dibuat untuk pesanan ini. Muat ulang halaman lalu coba lagi.',
       );
     }
 
@@ -354,6 +428,30 @@ export async function createPaymentForOrders(user, orderIds) {
     },
   });
 
+  // Atomically claim the orders for this payment. Without this, two
+  // simultaneous checkout requests could each create a Snap token and only
+  // the last link would win, leaving one payable token unaccounted for.
+  const claim = await prisma.orders.updateMany({
+    where: {
+      id: { in: ids },
+      status: 'pending_payment',
+      ...(existing
+        ? { OR: [{ payment_id: null }, { payment_id: existing.id }] }
+        : { payment_id: null }),
+    },
+    data: { payment_id: payment.id },
+  });
+
+  if (claim.count !== ids.length) {
+    await prisma.payments
+      .update({ where: { id: payment.id }, data: { status: 'failed' } })
+      .catch(() => {});
+    throw new HttpError(
+      409,
+      'Pembayaran lain sedang dibuat untuk pesanan ini. Muat ulang halaman lalu coba lagi.',
+    );
+  }
+
   try {
     const transaction = await createSnapTransaction({
       orderId: midtransOrderId,
@@ -376,10 +474,6 @@ export async function createPaymentForOrders(user, orderIds) {
           snap_redirect_url: transaction.redirect_url,
         },
       });
-      await tx.orders.updateMany({
-        where: { id: { in: ids } },
-        data: { payment_id: payment.id },
-      });
       return tx.payments.findUnique({
         where: { id: payment.id },
         include: paymentInclude,
@@ -388,9 +482,15 @@ export async function createPaymentForOrders(user, orderIds) {
 
     return mapPaymentRow(updated);
   } catch (err) {
-    await prisma.payments
-      .update({ where: { id: payment.id }, data: { status: 'failed' } })
-      .catch(() => {});
+    // Release the claim so the buyer can retry without being locked to a
+    // payment that never got a Snap token.
+    await prisma.$transaction([
+      prisma.orders.updateMany({
+        where: { id: { in: ids }, payment_id: payment.id },
+        data: { payment_id: existing ? existing.id : null },
+      }),
+      prisma.payments.update({ where: { id: payment.id }, data: { status: 'failed' } }),
+    ]).catch(() => {});
     console.error('Midtrans createTransaction failed:', err);
     throw new HttpError(502, 'Gagal membuat transaksi pembayaran. Coba lagi.');
   }
@@ -464,4 +564,279 @@ export async function fetchPaymentByMidtransOrderId(user, midtransOrderId) {
   if (!owns && user.role !== 'admin') throw new HttpError(403, 'Akses ditolak.');
 
   return mapPaymentRow(payment);
+}
+
+/**
+ * Called before an order is cancelled. Makes sure the order is not backed by
+ * a live or settled payment, so a cancelled order can never keep real money.
+ * Returns `{ ok: false, reason }` when the cancellation must be refused.
+ */
+export async function closePaymentForCancellation(paymentId) {
+  const payment = await prisma.payments.findUnique({ where: { id: paymentId } });
+  if (!payment) return { ok: true };
+  if (payment.status === 'paid') return { ok: false, reason: 'paid' };
+  if (payment.status === 'challenge') return { ok: false, reason: 'challenge' };
+  if (!['pending', 'failed', 'expired'].includes(payment.status)) return { ok: true };
+
+  if (payment.status === 'pending') {
+    try {
+      // The buyer may have paid seconds before pressing cancel. Ask Midtrans
+      // first and refuse the cancellation if the money already arrived.
+      const remote = await getMidtransStatus(payment.midtrans_order_id);
+      const remoteStatus = mapMidtransStatus(remote.transaction_status, remote.fraud_status);
+      if (remoteStatus === 'paid' || remoteStatus === 'challenge') {
+        await applyPaymentStatus(payment, remote);
+        return { ok: false, reason: remoteStatus };
+      }
+      if (!['expired', 'failed', 'refunded'].includes(remoteStatus)) {
+        await expireMidtransTransaction(payment.midtrans_order_id).catch((err) => {
+          console.warn('[midtrans] gagal menutup transaksi saat pembatalan:', err?.message || err);
+        });
+      }
+    } catch (err) {
+      // 404 means the Snap token was never opened, which is safe to close
+      // locally. Other errors are logged but do not block the cancellation.
+      if (!UNKNOWN_TRANSACTION.test(String(err?.message || err))) {
+        console.warn('[midtrans] gagal cek status saat pembatalan:', err?.message || err);
+      }
+    }
+  }
+
+  await prisma.payments.updateMany({
+    where: { id: payment.id, status: { in: ['pending', 'failed', 'expired'] } },
+    data: { status: 'expired' },
+  });
+  return { ok: true };
+}
+
+/**
+ * Admin action: refund a settled payment. Restores stock for orders that have
+ * not shipped yet and cancels the linked orders.
+ */
+export async function refundPayment(paymentId, reason = null) {
+  const payment = await prisma.payments.findUnique({
+    where: { id: paymentId },
+    include: paymentInclude,
+  });
+  if (!payment) throw new HttpError(404, 'Pembayaran tidak ditemukan.');
+  if (!['paid', 'challenge'].includes(payment.status)) {
+    throw new HttpError(400, 'Hanya pembayaran lunas atau yang sedang ditinjau yang bisa direfund.');
+  }
+
+  const midtrans = { attempted: false, error: null };
+  if (payment.status === 'paid') {
+    try {
+      await refundMidtransTransaction(payment.midtrans_order_id, reason || 'Refund oleh admin');
+      midtrans.attempted = true;
+    } catch (err) {
+      midtrans.error = err?.message || String(err);
+      console.warn('[midtrans] refund gagal, status lokal tetap diubah:', midtrans.error);
+    }
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    const updated = await tx.payments.updateMany({
+      where: { id: payment.id, status: { in: ['paid', 'challenge'] } },
+      data: { status: 'refunded' },
+    });
+    if (updated.count === 0) return { changed: false, cancelledOrderIds: [] };
+
+    const cancelledOrderIds = [];
+    for (const order of payment.orders) {
+      if (order.status === 'cancelled') continue;
+      // Goods that already shipped are not restocked, but the order is still
+      // marked cancelled so the transaction trail stays consistent.
+      const restock = ['pending_payment', 'processing'].includes(order.status);
+      await tx.orders.update({ where: { id: order.id }, data: { status: 'cancelled' } });
+      if (restock) {
+        for (const item of order.items) {
+          if (!item.product_id) continue;
+          await tx.products.update({
+            where: { id: item.product_id },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
+      }
+      await tx.order_status_history.create({
+        data: {
+          order_id: order.id,
+          status: 'cancelled',
+          from_status: order.status,
+          to_status: 'cancelled',
+          changed_by: null,
+          note: `Refund pembayaran${reason ? `: ${reason}` : ''}`,
+        },
+      });
+      cancelledOrderIds.push(order.id);
+    }
+    return { changed: true, cancelledOrderIds };
+  });
+
+  if (result.changed) {
+    const firstOrder = payment.orders[0];
+    const buyerId = firstOrder?.buyer_id || null;
+    await notify(buyerId, {
+      type: 'payment_refunded',
+      title: 'Pembayaran dikembalikan',
+      body: `Pembayaran untuk pesanan #${(firstOrder?.id || '').slice(0, 8)} telah direfund${reason ? ` (${reason})` : ''}.`,
+      link: firstOrder ? `/pesanan/${firstOrder.id}` : '/profil/riwayat',
+    });
+    await Promise.all(
+      collectOwnerIds(payment.orders).map((ownerId) =>
+        notify(ownerId, {
+          type: 'payment_refunded',
+          title: 'Pesanan direfund',
+          body: `Pembayaran pesanan #${(firstOrder?.id || '').slice(0, 8)} dikembalikan ke pembeli${reason ? ` (${reason})` : ''}.`,
+          link: '/dashboard/toko/pesanan',
+        }),
+      ),
+    );
+  }
+
+  return { ok: true, status: 'refunded', ...result, midtrans };
+}
+
+/**
+ * Admin action: accept or deny a payment that Midtrans marked as `challenge`.
+ * Accepting treats the money as settled; denying lets the buyer pay again.
+ */
+export async function resolvePaymentChallenge(paymentId, decision, reason = null) {
+  if (!['accept', 'deny'].includes(decision)) {
+    throw new HttpError(400, 'Keputusan harus "accept" atau "deny".');
+  }
+
+  const payment = await prisma.payments.findUnique({
+    where: { id: paymentId },
+    include: paymentInclude,
+  });
+  if (!payment) throw new HttpError(404, 'Pembayaran tidak ditemukan.');
+  if (payment.status !== 'challenge') {
+    throw new HttpError(400, 'Pembayaran ini tidak sedang ditinjau.');
+  }
+
+  const midtrans = { attempted: false, error: null };
+  try {
+    await approveOrDenyMidtransTransaction(payment.midtrans_order_id, decision);
+    midtrans.attempted = true;
+  } catch (err) {
+    midtrans.error = err?.message || String(err);
+    console.warn('[midtrans] gagal mengirim keputusan challenge:', midtrans.error);
+  }
+
+  const payload = {
+    order_id: payment.midtrans_order_id,
+    status_code: decision === 'accept' ? '200' : '202',
+    gross_amount: `${payment.gross_amount}.00`,
+    transaction_status: decision === 'accept' ? 'settlement' : 'deny',
+    fraud_status: decision === 'accept' ? 'accept' : 'deny',
+    transaction_id: payment.transaction_id || undefined,
+    payment_type: payment.payment_type || undefined,
+    admin_decision: decision,
+    admin_note: reason || null,
+  };
+
+  const result = await applyPaymentStatus(payment, payload);
+  return { ...result, decision, midtrans };
+}
+
+/**
+ * Admin action: reconcile payments that never received a webhook and cancel
+ * abandoned unpaid orders so their reserved stock is released.
+ */
+export async function reconcilePayments({ limit = 25 } = {}) {
+  const now = new Date();
+  const summary = {
+    checked: 0,
+    paid: 0,
+    expired: 0,
+    failed: 0,
+    unchanged: 0,
+    errors: 0,
+    cancelledOrderIds: [],
+  };
+
+  const stalePayments = await prisma.payments.findMany({
+    where: { status: 'pending', expires_at: { lte: now } },
+    include: paymentInclude,
+    orderBy: { expires_at: 'asc' },
+    take: limit,
+  });
+
+  for (const payment of stalePayments) {
+    summary.checked += 1;
+    try {
+      const remote = await getMidtransStatus(payment.midtrans_order_id);
+      const result = await applyPaymentStatus(payment, remote);
+      if (result.status === 'paid') summary.paid += 1;
+      else if (result.status === 'expired') summary.expired += 1;
+      else if (result.status === 'failed') summary.failed += 1;
+      else summary.unchanged += 1;
+    } catch (err) {
+      if (UNKNOWN_TRANSACTION.test(String(err?.message || err))) {
+        // Midtrans never saw this transaction (the Snap popup was never
+        // opened), so there is nothing to wait for.
+        const updated = await prisma.payments.updateMany({
+          where: { id: payment.id, status: 'pending' },
+          data: { status: 'expired' },
+        });
+        if (updated.count) summary.expired += 1;
+        else summary.unchanged += 1;
+      } else {
+        summary.errors += 1;
+        console.warn('[midtrans] gagal menyinkronkan pembayaran:', err?.message || err);
+      }
+    }
+  }
+
+  const cutoff = new Date(Date.now() - STALE_ORDER_HOURS * 60 * 60 * 1000);
+  const staleOrders = await prisma.orders.findMany({
+    where: {
+      status: 'pending_payment',
+      created_at: { lte: cutoff },
+      OR: [
+        { payment_id: null },
+        { payment: { is: { status: { in: ['expired', 'failed'] } } } },
+      ],
+    },
+    include: { items: true, payment: { select: { status: true } } },
+    take: limit,
+  });
+
+  for (const order of staleOrders) {
+    const cancelled = await prisma.$transaction(async (tx) => {
+      const moved = await tx.orders.updateMany({
+        where: { id: order.id, status: 'pending_payment' },
+        data: { status: 'cancelled' },
+      });
+      if (moved.count === 0) return false;
+      for (const item of order.items) {
+        if (!item.product_id) continue;
+        await tx.products.update({
+          where: { id: item.product_id },
+          data: { stock: { increment: item.quantity } },
+        });
+      }
+      await tx.order_status_history.create({
+        data: {
+          order_id: order.id,
+          status: 'cancelled',
+          from_status: 'pending_payment',
+          to_status: 'cancelled',
+          changed_by: null,
+          note: 'Dibatalkan otomatis karena pembayaran tidak diselesaikan',
+        },
+      });
+      return true;
+    });
+    if (!cancelled) continue;
+    summary.cancelledOrderIds.push(order.id);
+    await notify(order.buyer_id, {
+      type: 'order_cancelled',
+      title: 'Pesanan dibatalkan otomatis',
+      body: `Pesanan #${order.id.slice(0, 8)} dibatalkan karena pembayaran tidak diselesaikan. Stok sudah dikembalikan.`,
+      link: `/pesanan/${order.id}`,
+    });
+  }
+
+  return summary;
 }

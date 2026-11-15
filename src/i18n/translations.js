@@ -962,6 +962,8 @@ export const translations = {
       payNow: 'Bayar Sekarang',
       payAgain: 'Bayar Ulang',
       payAgainHint: 'Pembayaran sebelumnya gagal atau kedaluwarsa. Pesananmu masih tersimpan, silakan bayar ulang.',
+      paymentUnderReview: 'Pembayaran sedang ditinjau oleh Midtrans. Kamu akan diberi tahu setelah hasilnya keluar.',
+      paymentRefundedNote: 'Pembayaran pesanan ini sudah dikembalikan (refund).',
     },
     applicationStatus: {
       stepSubmitted: 'Dikirim',
@@ -2069,6 +2071,8 @@ export const translations = {
       payNow: 'Pay Now',
       payAgain: 'Pay Again',
       payAgainHint: 'The previous payment failed or expired. Your order is still saved, please pay again.',
+      paymentUnderReview: 'Midtrans is reviewing this payment. You will be notified once the result is available.',
+      paymentRefundedNote: 'This order has been paid and refunded.',
     },
     applicationStatus: {
       stepSubmitted: 'Submitted',

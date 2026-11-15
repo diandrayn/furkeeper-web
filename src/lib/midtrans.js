@@ -84,6 +84,17 @@ export async function expireMidtransTransaction(orderId) {
   return core().transaction.expire(orderId);
 }
 
+/** Ask Midtrans to refund a settled transaction (full refund). */
+export async function refundMidtransTransaction(orderId, reason = 'Refund oleh admin') {
+  return core().transaction.refund(orderId, { reason: String(reason).slice(0, 255) });
+}
+
+/** Approve or deny a transaction that Midtrans flagged as fraud challenge. */
+export async function approveOrDenyMidtransTransaction(orderId, decision) {
+  if (decision === 'accept') return core().transaction.approve(orderId);
+  return core().transaction.deny(orderId);
+}
+
 export function verifyMidtransSignature({
   order_id,
   status_code,

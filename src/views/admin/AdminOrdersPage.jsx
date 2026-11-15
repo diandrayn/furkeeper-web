@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Package, Scissors, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Package, Scissors, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import Card from '../../components/Card';
+import Button from '../../components/Button';
 import Input from '../../components/Input';
 import Select from '../../components/Select';
 import Pagination from '../../components/Pagination';
@@ -9,6 +10,9 @@ import PawLoader from '../../components/decorative/PawLoader';
 import {
   fetchAllOrders,
   fetchAllBookings,
+  refundPayment,
+  resolvePaymentChallenge,
+  reconcilePayments,
   ORDER_STATUS_LABELS,
   BOOKING_STATUS_LABELS,
 } from '../../utils/admin';
@@ -63,6 +67,8 @@ export default function AdminOrdersPage() {
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState(null);
+  const [actionBusy, setActionBusy] = useState('');
+  const [notice, setNotice] = useState('');
 
   const statusLabels = tab === 'orders' ? ORDER_STATUS_LABELS : BOOKING_STATUS_LABELS;
   const statusOptions = useMemo(
@@ -99,23 +105,102 @@ export default function AdminOrdersPage() {
 
   const pageItems = useMemo(() => rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [rows, page]);
 
+  const handleReconcile = async () => {
+    setActionBusy('reconcile');
+    setNotice('');
+    try {
+      const summary = await reconcilePayments();
+      setNotice(
+        `Sinkronisasi selesai: ${summary.checked} pembayaran dicek, ${summary.paid} lunas, `
+          + `${summary.expired} kedaluwarsa, ${summary.failed} gagal, `
+          + `${summary.cancelledOrderIds.length} pesanan dibatalkan otomatis.`,
+      );
+      load();
+    } catch (err) {
+      console.error('reconcilePayments failed:', err);
+      setNotice(err?.message || 'Gagal menyinkronkan pembayaran.');
+    } finally {
+      setActionBusy('');
+    }
+  };
+
+  const handleRefund = async (paymentId) => {
+    const reason = window.prompt('Alasan refund (opsional):', 'Dibatalkan oleh admin');
+    if (reason === null) return;
+    setActionBusy(paymentId);
+    setNotice('');
+    try {
+      const result = await refundPayment(paymentId, reason || null);
+      setNotice(
+        result.changed
+          ? `Pembayaran direfund. ${result.cancelledOrderIds.length} pesanan dibatalkan dan stok dikembalikan.`
+          : 'Tidak ada perubahan — status pembayaran sudah berubah.',
+      );
+      load();
+    } catch (err) {
+      console.error('refundPayment failed:', err);
+      setNotice(err?.message || 'Gagal merefund pembayaran.');
+    } finally {
+      setActionBusy('');
+    }
+  };
+
+  const handleChallenge = async (paymentId, decision) => {
+    if (decision === 'deny' && !window.confirm('Tolak pembayaran ini? Pembeli harus membayar ulang.')) return;
+    setActionBusy(paymentId);
+    setNotice('');
+    try {
+      await resolvePaymentChallenge(paymentId, decision);
+      setNotice(
+        decision === 'accept'
+          ? 'Pembayaran diterima. Pesanan yang menunggu pembayaran sudah diproses.'
+          : 'Pembayaran ditolak. Pembeli dapat membayar ulang.',
+      );
+      load();
+    } catch (err) {
+      console.error('resolvePaymentChallenge failed:', err);
+      setNotice(err?.message || 'Gagal memproses keputusan pembayaran.');
+    } finally {
+      setActionBusy('');
+    }
+  };
+
   return (
     <div className="space-y-5">
-      <div className="inline-flex rounded-full bg-white p-1 shadow-sm">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
-            className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-150 ${
-              tab === t.key ? 'bg-brand-burgundy text-white' : 'text-text-secondary hover:text-brand-burgundy'
-            }`}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="inline-flex rounded-full bg-white p-1 shadow-sm">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-150 ${
+                tab === t.key ? 'bg-brand-burgundy text-white' : 'text-text-secondary hover:text-brand-burgundy'
+              }`}
+            >
+              <t.icon className="h-4 w-4" aria-hidden="true" />
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {tab === 'orders' && (
+          <Button
+            variant="outline"
+            size="sm"
+            icon={<RefreshCw className="h-4 w-4" />}
+            onClick={handleReconcile}
+            loading={actionBusy === 'reconcile'}
           >
-            <t.icon className="h-4 w-4" aria-hidden="true" />
-            {t.label}
-          </button>
-        ))}
+            Sinkronkan Pembayaran
+          </Button>
+        )}
       </div>
+
+      {notice && (
+        <p className="rounded-xl border border-brand-peach bg-brand-cream/60 px-4 py-2.5 text-sm text-text-secondary">
+          {notice}
+        </p>
+      )}
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <Input
@@ -154,6 +239,9 @@ export default function AdminOrdersPage() {
                     order={row}
                     expanded={expandedId === row.id}
                     onToggle={() => setExpandedId((cur) => (cur === row.id ? null : row.id))}
+                    busy={actionBusy === row.payment?.id}
+                    onRefund={handleRefund}
+                    onResolveChallenge={handleChallenge}
                   />
                 ) : (
                   <BookingRow
@@ -173,7 +261,7 @@ export default function AdminOrdersPage() {
   );
 }
 
-function OrderRow({ order, expanded, onToggle }) {
+function OrderRow({ order, expanded, onToggle, busy, onRefund, onResolveChallenge }) {
   return (
     <div>
       <button type="button" onClick={onToggle} className="flex w-full flex-wrap items-center justify-between gap-3 p-4 text-left transition-colors duration-150 hover:bg-brand-peach/30">
@@ -210,6 +298,35 @@ function OrderRow({ order, expanded, onToggle }) {
               </div>
             ))}
           </div>
+          {order.payment && ['paid', 'challenge'].includes(order.payment.status) && (
+            <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+              {order.payment.status === 'challenge' && (
+                <>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => onResolveChallenge(order.payment.id, 'accept')}
+                  >
+                    Terima Pembayaran
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => onResolveChallenge(order.payment.id, 'deny')}
+                  >
+                    Tolak
+                  </Button>
+                </>
+              )}
+              {order.payment.status === 'paid' && (
+                <Button variant="outline" size="sm" disabled={busy} onClick={() => onRefund(order.payment.id)}>
+                  Refund Pembayaran
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

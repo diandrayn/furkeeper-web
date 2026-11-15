@@ -61,7 +61,9 @@ export function statusBadge(status, lang = 'id') {
 // ---------------------------------------------------------------------------
 export const ORDER_TRANSITIONS = {
   seller: {
-    pending_payment: ['processing', 'cancelled'],
+    // Unpaid orders advance automatically when the Midtrans webhook says the
+    // payment settled, so the seller can only cancel them here.
+    pending_payment: ['cancelled'],
     processing: ['shipped', 'cancelled'],
     shipped: ['completed', 'cancelled'],
   },
@@ -90,7 +92,7 @@ export function canTransition(order, actor, fromStatus, toStatus) {
 
 /** Aksi penjual berikutnya untuk satu status pesanan (untuk tombol modal). */
 export function nextOrderAction(status) {
-  if (status === 'pending_payment') return ['processing', 'confirmOrder'];
+  // pending_payment has no seller action: it moves on its own once paid.
   if (status === 'processing') return ['shipped', 'markShipped'];
   if (status === 'shipped') return ['completed', 'markCompleted'];
   return null;

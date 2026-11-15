@@ -3,6 +3,7 @@ import { HttpError } from '@/lib/http';
 import { notify } from '@/lib/notify';
 import { mapBookingRow, mapOrderRow, mapProviderBooking, mapStoreOrder } from '@/lib/mappers';
 import { getShippingFee } from '@/lib/shipping';
+import { closePaymentForCancellation } from '@/lib/paymentOps';
 
 const orderInclude = {
   items: { include: { store: { select: { name: true } } } },
@@ -65,10 +66,18 @@ export async function submitOrder(user, payload) {
     });
 
     for (const line of lines) {
-      await tx.products.update({
-        where: { id: line.product.id },
+      // Conditional decrement in case another checkout took the last units
+      // between the read above and this write.
+      const reserved = await tx.products.updateMany({
+        where: { id: line.product.id, stock: { gte: line.qty } },
         data: { stock: { decrement: line.qty } },
       });
+      if (reserved.count === 0) {
+        throw new HttpError(
+          400,
+          `Stok "${line.product.name}" tidak cukup (tersisa ${line.product.stock}).`,
+        );
+      }
       await tx.order_items.create({
         data: {
           order_id: created.id,
@@ -115,30 +124,64 @@ function canSellerChangeOrder(from, to) {
   );
 }
 
+const CANCELLATION_BLOCKED_MESSAGES = {
+  paid: 'Pembayaran pesanan ini sudah diterima. Ajukan refund lewat admin sebelum membatalkan.',
+  challenge: 'Pembayaran pesanan ini masih ditinjau Midtrans. Tunggu hasil peninjauan sebelum membatalkan.',
+};
+
 export async function setOrderStatus(user, orderId, status, actor) {
   if (!['buyer', 'seller'].includes(actor)) throw new HttpError(400, 'Aktor tidak valid.');
 
-  await prisma.$transaction(async (tx) => {
-    const order = await tx.orders.findUnique({
-      where: { id: orderId },
-      include: { items: { include: { store: true } } },
-    });
-    if (!order) throw new HttpError(404, 'Pesanan tidak ditemukan.');
+  const order = await prisma.orders.findUnique({
+    where: { id: orderId },
+    include: {
+      items: { include: { store: true } },
+      payment: { select: { id: true, status: true } },
+    },
+  });
+  if (!order) throw new HttpError(404, 'Pesanan tidak ditemukan.');
 
-    if (actor === 'buyer') {
-      if (order.buyer_id !== user.id) throw new HttpError(403, 'Pesanan ini bukan milikmu.');
-      if (!canBuyerChangeOrder(order.status, status)) {
-        throw new HttpError(400, `Pembeli tidak dapat mengubah status dari "${order.status}" ke "${status}".`);
-      }
-    } else {
-      const owns = order.items.some((item) => item.store?.owner_id === user.id);
-      if (!owns && user.role !== 'admin') throw new HttpError(403, 'Kamu bukan penjual dari pesanan ini.');
-      if (!canSellerChangeOrder(order.status, status)) {
-        throw new HttpError(400, `Transisi status "${order.status}" ke "${status}" tidak diizinkan.`);
-      }
+  if (actor === 'buyer') {
+    if (order.buyer_id !== user.id) throw new HttpError(403, 'Pesanan ini bukan milikmu.');
+    if (!canBuyerChangeOrder(order.status, status)) {
+      throw new HttpError(400, `Pembeli tidak dapat mengubah status dari "${order.status}" ke "${status}".`);
     }
+  } else {
+    const owns = order.items.some((item) => item.store?.owner_id === user.id);
+    if (!owns && user.role !== 'admin') throw new HttpError(403, 'Kamu bukan penjual dari pesanan ini.');
+    if (!canSellerChangeOrder(order.status, status)) {
+      throw new HttpError(400, `Transisi status "${order.status}" ke "${status}" tidak diizinkan.`);
+    }
+    // A seller must never move an unpaid order into fulfilment. Paid orders
+    // are advanced automatically by the Midtrans webhook.
+    if (order.status === 'pending_payment' && status === 'processing' && order.payment?.status !== 'paid') {
+      throw new HttpError(400, 'Pesanan belum dibayar. Status berubah otomatis setelah pembayaran diterima.');
+    }
+  }
 
-    await tx.orders.update({ where: { id: orderId }, data: { status } });
+  // Cancelling must not leave a live or settled payment behind. This also
+  // closes the Snap token so the buyer cannot pay a cancelled order.
+  if (status === 'cancelled' && order.payment?.id) {
+    const closed = await closePaymentForCancellation(order.payment.id);
+    if (!closed.ok) {
+      throw new HttpError(
+        409,
+        CANCELLATION_BLOCKED_MESSAGES[closed.reason]
+          || 'Pembayaran pesanan ini tidak bisa dibatalkan saat ini.',
+      );
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // Conditional transition so two concurrent updates cannot both apply the
+    // change (and restock the order twice).
+    const moved = await tx.orders.updateMany({
+      where: { id: orderId, status: order.status },
+      data: { status },
+    });
+    if (moved.count === 0) {
+      throw new HttpError(409, 'Status pesanan sudah berubah. Muat ulang halaman lalu coba lagi.');
+    }
     await tx.order_status_history.create({
       data: {
         order_id: orderId,
@@ -151,29 +194,28 @@ export async function setOrderStatus(user, orderId, status, actor) {
 
     if (status === 'cancelled') {
       for (const item of order.items) {
-        if (item.product_id) {
-          await tx.products.update({
-            where: { id: item.product_id },
-            data: { stock: { increment: item.quantity } },
-          });
-        }
+        if (!item.product_id) continue;
+        await tx.products.update({
+          where: { id: item.product_id },
+          data: { stock: { increment: item.quantity } },
+        });
       }
     }
   });
 
-  const order = await prisma.orders.findUnique({
+  const updated = await prisma.orders.findUnique({
     where: { id: orderId },
     include: { items: { include: { store: true } } },
   });
   if (actor === 'seller') {
-    await notify(order.buyer_id, {
+    await notify(updated.buyer_id, {
       type: 'order_status',
       title: `Pesanan #${orderId.slice(0, 8)}`,
       body: `Status pesananmu menjadi "${status}".`,
       link: `/pesanan/${orderId}`,
     });
   } else {
-    const ownerIds = [...new Set(order.items.map((i) => i.store?.owner_id).filter(Boolean))];
+    const ownerIds = [...new Set(updated.items.map((i) => i.store?.owner_id).filter(Boolean))];
     await Promise.all(
       ownerIds.map((ownerId) =>
         notify(ownerId, {

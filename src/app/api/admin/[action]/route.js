@@ -3,7 +3,7 @@ import * as adminOps from '@/lib/adminOps';
 import { requireAdmin } from '@/lib/session';
 
 export const GET = handleApi(async (request, context) => {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { action } = await context.params;
   const params = new URL(request.url).searchParams;
 
@@ -20,6 +20,7 @@ export const GET = handleApi(async (request, context) => {
     fetchAllServices: () => adminOps.fetchAllServices({ approvalStatus: params.get('approvalStatus') || 'all' }),
     fetchAllReviews: () => adminOps.fetchAllReviews(),
     fetchAllOrders: () => adminOps.fetchAllOrders({ search: params.get('search') || '', status: params.get('status') || 'all' }),
+    reconcilePayments: () => adminOps.reconcilePayments(admin),
     fetchAllBookings: () => adminOps.fetchAllBookings({ search: params.get('search') || '', status: params.get('status') || 'all' }),
     fetchAllReports: () => adminOps.fetchAllReports({
       search: params.get('search') || '',
@@ -98,6 +99,9 @@ export const POST = handleApi(async (request, context) => {
     saveFaq: () => adminOps.saveFaq(admin, body.faq || {}),
     deleteFaq: () => adminOps.deleteFaq(admin, body.id, body.faqLabel),
     moveFaq: () => adminOps.moveFaq(body.faqs || [], body.id, body.direction),
+    refundPayment: () => adminOps.refundPayment(admin, body.paymentId, body.reason),
+    resolvePaymentChallenge: () =>
+      adminOps.resolvePaymentChallenge(admin, body.paymentId, body.decision, body.reason),
   };
   const handler = handlers[action];
   if (!handler) throw new HttpError(404, 'Aksi admin tidak ditemukan.');

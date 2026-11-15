@@ -148,6 +148,10 @@ export const deleteServiceAdmin = (id, serviceLabel) => post('deleteServiceAdmin
 export const fetchAllReviews = () => get('fetchAllReviews');
 export const deleteReviewAdmin = (id, reviewLabel) => post('deleteReviewAdmin', { id, reviewLabel });
 export const fetchAllOrders = (options = {}) => get('fetchAllOrders', options);
+export const refundPayment = (paymentId, reason) => post('refundPayment', { paymentId, reason });
+export const resolvePaymentChallenge = (paymentId, decision, reason) =>
+  post('resolvePaymentChallenge', { paymentId, decision, reason });
+export const reconcilePayments = () => get('reconcilePayments');
 export const fetchAllBookings = (options = {}) => get('fetchAllBookings', options);
 export const fetchAllReports = (options = {}) => get('fetchAllReports', options);
 export const setReportStatus = (reportId, status, reportLabel, reporterId) =>

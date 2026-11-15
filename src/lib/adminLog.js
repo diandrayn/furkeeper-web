@@ -34,6 +34,9 @@ export const ACTIVITY_ACTION_LABELS = {
   update_platform_content: 'Mengubah konten statis platform',
   create_platform_content: 'Menambah konten statis platform',
   delete_platform_content: 'Menghapus konten statis platform',
+  refund_payment: 'Merefund pembayaran pesanan',
+  resolve_payment_challenge: 'Meninjau pembayaran challenge Midtrans',
+  reconcile_payments: 'Merekonsiliasi status pembayaran',
 };
 
 export async function logAdminActivity(actor, action, targetType, targetId, targetLabel = null, detail = null) {
