@@ -148,7 +148,9 @@ export async function setOrderStatus(user, orderId, status, actor) {
     }
   } else {
     const owns = order.items.some((item) => item.store?.owner_id === user.id);
-    if (!owns && user.role !== 'admin') throw new HttpError(403, 'Kamu bukan penjual dari pesanan ini.');
+    // Admin only supervises; fulfilling or cancelling an order stays with the
+    // seller. Admin intervention goes through refund/challenge actions.
+    if (!owns) throw new HttpError(403, 'Kamu bukan penjual dari pesanan ini.');
     if (!canSellerChangeOrder(order.status, status)) {
       throw new HttpError(400, `Transisi status "${order.status}" ke "${status}" tidak diizinkan.`);
     }
