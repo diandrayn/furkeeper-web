@@ -14,7 +14,6 @@ import PawLoader from '../components/decorative/PawLoader';
 import { useChat } from '../hooks/useChat';
 import { useAuth } from '../hooks/useAuth';
 import { usePets } from '../context/PetContext';
-import { supabase } from '../lib/supabaseClient';
 import { fetchBookingById, setBookingStatus } from '../utils/bookings';
 import { createReview, hasReviewed } from '../utils/reviews';
 import { BOOKING_FLOW, statusLabel, statusBadge } from '../utils/statusConstants';
@@ -63,24 +62,11 @@ export default function BookingStatusPage() {
     load();
   }, [load]);
 
-  // Perbarui otomatis saat penyedia jasa mengubah status booking.
+  // Perbarui otomatis dari MySQL saat penyedia jasa mengubah status booking.
   useEffect(() => {
     if (!user?.id || !bookingId) return undefined;
-    const channel = supabase
-      .channel(`booking-status-${bookingId}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'bookings', filter: `id=eq.${bookingId}` },
-        () => {
-          load();
-        },
-      )
-      .subscribe();
     const poller = window.setInterval(() => load(), 30000);
-    return () => {
-      supabase.removeChannel(channel);
-      window.clearInterval(poller);
-    };
+    return () => window.clearInterval(poller);
   }, [user?.id, bookingId, load]);
 
   const handleChatProvider = async () => {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Heart, Star, Store, ShoppingCart } from 'lucide-react';
+import { Heart, Star, Store, ShoppingCart, Plus } from 'lucide-react';
 import { Link } from '@/lib/router';
 import ImagePlaceholder from './ImagePlaceholder';
 import Badge from './Badge';
@@ -25,6 +25,8 @@ export default function ProductCard({
   isWishlisted,
   onWishlistToggle,
   to,
+  variant = 'default',
+  tone = 'cream',
 }) {
   const [internalWish, setInternalWish] = useState(false);
   const { t } = useLanguage();
@@ -48,6 +50,71 @@ export default function ProductCard({
     event.stopPropagation();
     addItem({ productId: id, name, price, quantity: 1, storeName, storeId });
   };
+
+  const showcaseTone = {
+    peach: 'bg-brand-peach',
+    pink: 'bg-brand-pink',
+    mist: 'bg-brand-mist',
+    cream: 'bg-white',
+  }[tone] || 'bg-white';
+
+  if (variant === 'showcase') {
+    return (
+      <article
+        className={`playful-interactive group flex h-full flex-col overflow-hidden rounded-[1.5rem] ${showcaseTone} p-3`}
+      >
+        <div className="relative overflow-hidden rounded-[1.15rem]">
+          {href ? (
+            <Link
+              to={href}
+              className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-burgundy/40"
+            >
+              {imageUrl ? (
+                <img src={imageUrl} alt={name} className="aspect-square w-full object-cover" />
+              ) : (
+                <ImagePlaceholder
+                  className="aspect-square w-full"
+                  alt={image || `Gambar produk ${name}`}
+                />
+              )}
+            </Link>
+          ) : imageUrl ? (
+            <img src={imageUrl} alt={name} className="aspect-square w-full object-cover" />
+          ) : (
+            <ImagePlaceholder
+              className="aspect-square w-full"
+              alt={image || `Gambar produk ${name}`}
+            />
+          )}
+        </div>
+        <div className="mt-3 flex items-end justify-between gap-2 px-1 pb-1">
+          <div className="min-w-0">
+            {href ? (
+              <Link
+                to={href}
+                className="line-clamp-2 text-sm font-semibold text-brand-burgundy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-burgundy/40"
+              >
+                {name}
+              </Link>
+            ) : (
+              <h3 className="line-clamp-2 text-sm font-semibold text-brand-burgundy">{name}</h3>
+            )}
+            <p className="mt-1 font-heading text-sm text-text-primary">{formatPrice(price)}</p>
+          </div>
+          {isBuyerAccount && (
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-burgundy text-white transition-colors hover:bg-brand-burgundy/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-burgundy/40"
+              aria-label={t('productDetail.addToCart')}
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+      </article>
+    );
+  }
 
   const imageSection = (
     <div className="relative">

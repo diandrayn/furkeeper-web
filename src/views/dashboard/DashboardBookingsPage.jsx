@@ -7,7 +7,6 @@ import Pagination from '../../components/Pagination';
 import EmptyState from '../../components/EmptyState';
 import PawLoader from '../../components/decorative/PawLoader';
 import { useDashboard } from '../../hooks/useDashboard';
-import { supabase } from '../../lib/supabaseClient';
 import { fetchProviderBookings, setBookingStatus } from '../../utils/bookings';
 import { BOOKING_STATUSES, BOOKING_TRANSITIONS, statusLabel, statusBadge, nextBookingAction } from '../../utils/statusConstants';
 import { DASHBOARD_PAGE_SIZE } from '../../data/mockDashboard';
@@ -142,24 +141,11 @@ export default function DashboardBookingsPage() {
     load();
   }, [load]);
 
-  // Booking baru masuk otomatis tampil (realtime RLS-aware) + polling ringan.
+  // Poll MySQL for new or updated bookings while this dashboard is open.
   useEffect(() => {
     if (!serviceStoreId) return undefined;
-    const channel = supabase
-      .channel(`provider-bookings-${serviceStoreId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'bookings' },
-        () => {
-          load();
-        },
-      )
-      .subscribe();
     const poller = window.setInterval(() => load(), 30000);
-    return () => {
-      supabase.removeChannel(channel);
-      window.clearInterval(poller);
-    };
+    return () => window.clearInterval(poller);
   }, [serviceStoreId, load]);
 
   const filtered = useMemo(() => {

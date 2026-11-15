@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from '@/lib/router';
+import { Link, useSearchParams } from '@/lib/router';
 import AuthCard from '../components/AuthCard';
 import AuthHeader from '../components/AuthHeader';
 import AuthPageShell from '../components/AuthPageShell';
@@ -9,8 +9,10 @@ import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../i18n/LanguageContext';
 
 export default function ResetPasswordPage() {
-  const { resetPassword, isLoggedIn, isLoading } = useAuth();
+  const { resetPassword } = useAuth();
   const { t } = useLanguage();
+  const [params] = useSearchParams();
+  const token = params.get('token') || '';
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [fieldError, setFieldError] = useState('');
@@ -35,42 +37,13 @@ export default function ResetPasswordPage() {
     setFieldError('');
     setStatus('submitting');
     try {
-      await resetPassword(password);
+      await resetPassword(token, password);
       setStatus('done');
     } catch (err) {
       setSubmitError(err.message || t('auth.resetPassword.errorUpdate'));
       setStatus('idle');
     }
   };
-
-  // The e-mail link lands here with a recovery session that Supabase
-  // restores via detectSessionInUrl. Until the session resolves we must
-  // not conclude the link is invalid, so wait for isLoading to finish.
-  if (!isLoading && !isLoggedIn && status !== 'done') {
-    return (
-      <AuthPageShell tone="burgundy">
-        <AuthCard>
-          <AuthHeader title={t('auth.resetPassword.title')} />
-          <div className="space-y-4">
-            <div
-              className="rounded-xl bg-status-danger/10 px-4 py-3 text-sm text-status-danger"
-              role="alert"
-            >
-              {t('auth.resetPassword.expiredHint')}
-            </div>
-            <p className="text-center text-sm text-text-secondary">
-              <Link
-                to="/forgot-password"
-                className="font-medium text-brand-burgundy transition-colors duration-200 hover:underline"
-              >
-                {t('auth.forgotPassword.backToLogin')}
-              </Link>
-            </p>
-          </div>
-        </AuthCard>
-      </AuthPageShell>
-    );
-  }
 
   return (
     <AuthPageShell tone="burgundy">
@@ -85,6 +58,20 @@ export default function ResetPasswordPage() {
             <Link to="/login">
               <Button variant="orange" fullWidth>
                 {t('auth.resetPassword.backToLogin')}
+              </Button>
+            </Link>
+          </div>
+        ) : !token ? (
+          <div className="space-y-4">
+            <div
+              className="rounded-xl bg-status-danger/10 px-4 py-3 text-sm text-status-danger"
+              role="alert"
+            >
+              {t('auth.resetPassword.expiredHint')}
+            </div>
+            <Link to="/forgot-password">
+              <Button variant="orange" fullWidth>
+                {t('auth.forgotPassword.buttonLabel')}
               </Button>
             </Link>
           </div>
@@ -111,11 +98,19 @@ export default function ResetPasswordPage() {
             />
 
             {submitError && (
-              <div
-                className="rounded-xl bg-status-danger/10 px-4 py-3 text-sm text-status-danger"
-                role="alert"
-              >
-                {submitError}
+              <div className="space-y-2">
+                <div
+                  className="rounded-xl bg-status-danger/10 px-4 py-3 text-sm text-status-danger"
+                  role="alert"
+                >
+                  {submitError}
+                </div>
+                <Link
+                  to="/forgot-password"
+                  className="block text-center text-sm font-medium text-brand-burgundy hover:underline"
+                >
+                  {t('auth.resetPassword.expiredHint')}
+                </Link>
               </div>
             )}
 

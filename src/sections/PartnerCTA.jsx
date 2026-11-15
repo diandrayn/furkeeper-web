@@ -1,27 +1,40 @@
+import { useRef, useState } from 'react';
 import { useNavigate } from '@/lib/router';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../i18n/LanguageContext';
+import Button from '../components/Button';
 import sellerImg from '../assets/become-seller.jpg';
 import serviceImg from '../assets/become-service.jpg';
 
 const sellerImage = sellerImg.src;
 const serviceImage = serviceImg.src;
-const partnerCardKeys = ['seller', 'service'];
-const partnerImages = { seller: sellerImage, service: serviceImage };
 
-// Kartu "Jadi Penjual"/"Jadi Penyedia Jasa" tidak boleh melempar akun mitra
-// yang SUDAH terdaftar ke formulir pendaftaran akun baru (/register/partner)
-// — emailnya sudah terpakai, jadi itu jalan buntu ("selalu disuruh daftar").
-// Rute disesuaikan status akun saat ini:
-//   - tamu / akun pembeli      → /register/partner?type=seller|service
-//   - mitra aktif              → dashboard toko/jasa
-//   - mitra sedang ditinjau    → /status-pengajuan
-//   - mitra ditolak            → /pengajuan-ulang
-//   - mitra status belum tercatat → dashboard (guard menampilkan panduan pemulihan)
+// Single source of truth for both tabs — the panel and the tab labels read
+// from this object, so seller/service content is never duplicated in JSX.
+const partnerContent = {
+  seller: {
+    image: sellerImage,
+    titleKey: 'partnerCTA.seller.title',
+    descriptionKey: 'partnerCTA.seller.description',
+    ctaKey: 'partnerCTA.seller.cta',
+  },
+  service: {
+    image: serviceImage,
+    titleKey: 'partnerCTA.service.title',
+    descriptionKey: 'partnerCTA.service.description',
+    ctaKey: 'partnerCTA.service.cta',
+  },
+};
+
+const partnerTabOrder = ['seller', 'service'];
+
 export default function PartnerCTA() {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { user, isLoggedIn } = useAuth();
+  const [activeTab, setActiveTab] = useState('seller');
+  const [slideDirection, setSlideDirection] = useState(1);
+  const tabRefs = useRef({});
 
   const partnerRoute = (key) => {
     const type = key === 'service' ? 'service' : 'seller';
@@ -44,45 +57,129 @@ export default function PartnerCTA() {
     } else if (status === 'rejected') {
       navigate('/pengajuan-ulang');
     } else {
-      // status 'none' — akun mitra lama; guard dashboard menampilkan
-      // panduan pemulihan (hubungi admin), bukan formulir daftar baru.
       navigate(type === 'service' ? '/dashboard/jasa' : '/dashboard/toko');
     }
   };
 
-  return (
-    <section className="mx-auto max-w-container px-4 py-16 md:px-6 md:py-20 lg:px-8 lg:py-24">
-      <div className="rounded-3xl bg-brand-peach/80 px-6 py-10 md:px-14">
-        <div className="mb-8">
-          <h2 className="font-heading text-2xl text-brand-burgundy md:text-3xl">
-            {t('partnerCTA.title')}
-          </h2>
-          <p className="mt-2 text-sm text-text-secondary md:text-base">
-            {t('partnerCTA.subtitle')}
-          </p>
-        </div>
+  const selectTab = (key) => {
+    if (key === activeTab) return;
+    const currentIndex = partnerTabOrder.indexOf(activeTab);
+    const nextIndex = partnerTabOrder.indexOf(key);
+    setSlideDirection(nextIndex > currentIndex ? 1 : -1);
+    setActiveTab(key);
+  };
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {partnerCardKeys.map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => partnerRoute(key)}
-              className="group overflow-hidden rounded-2xl bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <img
-                src={partnerImages[key]}
-                alt={`Ilustrasi ${t(`partnerCTA.${key}.title`)}`}
-                className="aspect-video w-full object-cover"
-              />
-              <div className="p-6">
-                <h3 className="font-heading text-lg font-bold text-brand-burgundy">
-                  {t(`partnerCTA.${key}.title`)}
-                </h3>
-                <p className="mt-2 text-sm text-text-secondary">{t(`partnerCTA.${key}.description`)}</p>
-              </div>
-            </button>
-          ))}
+  const handleTabKeyDown = (event) => {
+    const currentIndex = partnerTabOrder.indexOf(activeTab);
+    let nextIndex;
+
+    switch (event.key) {
+      case 'ArrowRight':
+      case 'ArrowDown':
+        nextIndex = (currentIndex + 1) % partnerTabOrder.length;
+        break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        nextIndex = (currentIndex - 1 + partnerTabOrder.length) % partnerTabOrder.length;
+        break;
+      case 'Home':
+        nextIndex = 0;
+        break;
+      case 'End':
+        nextIndex = partnerTabOrder.length - 1;
+        break;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    const nextKey = partnerTabOrder[nextIndex];
+    setSlideDirection(nextIndex > currentIndex ? 1 : -1);
+    setActiveTab(nextKey);
+    tabRefs.current[nextKey]?.focus();
+  };
+
+  const content = partnerContent[activeTab];
+
+  return (
+    <section className="rounded-[2rem] bg-[var(--krem)] px-5 py-10 sm:px-8 md:px-10 md:py-12">
+      <div className="mx-auto max-w-3xl text-center">
+        <h2 className="font-hero text-[clamp(1.9rem,3.6vw,2.75rem)] leading-tight text-[var(--navy)]">
+          {t('partnerCTA.title')}
+        </h2>
+        <p className="mt-3 text-[clamp(0.9rem,1.2vw,1.05rem)] leading-relaxed text-[var(--ungu)]">
+          {t('partnerCTA.subtitle')}
+        </p>
+      </div>
+
+      <div className="mt-7 flex justify-center">
+        <div
+          role="tablist"
+          aria-label={t('partnerCTA.tablistLabel')}
+          className="flex w-full max-w-md rounded-full bg-[var(--lavender)] p-1.5"
+        >
+          {partnerTabOrder.map((key) => {
+            const isActive = activeTab === key;
+            return (
+              <button
+                key={key}
+                ref={(node) => {
+                  tabRefs.current[key] = node;
+                }}
+                type="button"
+                role="tab"
+                id={`partner-tab-${key}`}
+                aria-selected={isActive}
+                aria-controls="partner-panel"
+                tabIndex={isActive ? 0 : -1}
+                onClick={() => selectTab(key)}
+                onKeyDown={handleTabKeyDown}
+                className={`flex-1 rounded-full px-2 py-2 text-[clamp(0.75rem,1vw,0.95rem)] font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--navy)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--lavender)] sm:px-4 sm:py-2.5 ${
+                  isActive
+                    ? 'bg-[var(--navy)] text-white shadow-md'
+                    : 'text-[var(--navy)] hover:bg-white/60'
+                }`}
+              >
+                {t(partnerContent[key].titleKey)}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div
+        id="partner-panel"
+        role="tabpanel"
+        aria-labelledby={`partner-tab-${activeTab}`}
+        tabIndex={0}
+        className="mt-6 rounded-[1.75rem] bg-[var(--pink)] p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--navy)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--krem)] sm:p-6"
+      >
+        <div
+          key={activeTab}
+          className="partner-panel-enter grid grid-cols-1 items-center gap-6 lg:grid-cols-2 lg:gap-8"
+          style={{ '--partner-shift': slideDirection > 0 ? '1.25rem' : '-1.25rem' }}
+        >
+          <div className="overflow-hidden rounded-[1.25rem]">
+            <img
+              src={content.image}
+              alt={`Ilustrasi ${t(content.titleKey)}`}
+              className="aspect-[4/3] h-full w-full object-cover"
+            />
+          </div>
+
+          <div className="flex min-h-[13rem] flex-col items-start justify-center px-1 sm:px-2 lg:min-h-[18rem]">
+            <h3 className="font-hero text-[clamp(1.5rem,2.6vw,2.1rem)] leading-tight text-[var(--navy)]">
+              {t(content.titleKey)}
+            </h3>
+            <p className="mt-3 text-[clamp(0.9rem,1.1vw,1rem)] leading-relaxed text-[var(--ungu)]">
+              {t(content.descriptionKey)}
+            </p>
+            <div className="mt-5">
+              <Button variant="primary" onClick={() => partnerRoute(activeTab)}>
+                {t(content.ctaKey)}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </section>

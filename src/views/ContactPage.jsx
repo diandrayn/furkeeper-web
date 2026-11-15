@@ -12,7 +12,7 @@ import Button from '../components/Button';
 import PawPrintPattern from '../components/decorative/PawPrintPattern';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useAuth } from '../hooks/useAuth';
-import { supabase } from '../lib/supabaseClient';
+import { apiPost } from '../lib/apiClient';
 
 export default function ContactPage() {
   const navigate = useNavigate();
@@ -78,14 +78,12 @@ export default function ContactPage() {
     setSubmitError(null);
     try {
       const subjectLabel = subjectOptions.find((o) => o.value === form.subject)?.label || form.subject;
-      const { error } = await supabase.from('help_messages').insert({
-        user_id: user.id,
+      await apiPost('/api/help', {
         name: [form.firstName, form.lastName].filter(Boolean).join(' '),
         email: form.email,
         subject: subjectLabel,
         body: form.message,
       });
-      if (error) throw error;
       setSent(true);
     } catch (err) {
       console.error('Gagal mengirim pesan bantuan:', err);

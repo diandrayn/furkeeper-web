@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchPublicServices } from '../utils/services';
+import { describeError } from '../lib/errors';
 
 /** Mirrors usePublicProducts.js — loads real provider services from
  * Supabase only, no demo/mock fallback. Logs (instead of swallowing)
@@ -17,7 +18,7 @@ export function usePublicServices() {
       })
       .catch((err) => {
         if (!active) return;
-        console.error('fetchPublicServices failed:', err);
+        console.error('fetchPublicServices failed:', describeError(err));
         setError(err);
       })
       .finally(() => {

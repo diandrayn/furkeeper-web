@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from '@/lib/router';
+import { useState } from 'react';
+import { Link } from '@/lib/router';
 import AuthCard from '../components/AuthCard';
 import AuthHeader from '../components/AuthHeader';
 import AuthPageShell from '../components/AuthPageShell';
@@ -9,17 +9,13 @@ import Checkbox from '../components/Checkbox';
 import Button from '../components/Button';
 import Stepper from '../components/Stepper';
 import ImagePlaceholder from '../components/ImagePlaceholder';
-import {
-  isValidEmailOrPhone,
-  getPasswordStrength,
-} from '../utils/validation';
+import { getPasswordStrength, isValidEmail } from '../utils/validation';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../i18n/LanguageContext';
 
 export default function BuyerRegisterPage() {
-  const navigate = useNavigate();
   const { t } = useLanguage();
-  const { registerInit, resendConfirmation, isLoggedIn } = useAuth();
+  const { registerInit, resendConfirmation } = useAuth();
   const buyerStepLabels = [t('auth.buyerRegister.stepAccount'), t('auth.buyerRegister.stepOtp')];
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
@@ -31,8 +27,9 @@ export default function BuyerRegisterPage() {
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [verified, setVerified] = useState(false);
-  const [resendTimer, setResendTimer] = useState(45);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [confirmationNotice, setConfirmationNotice] = useState('');
+  const [confirmationNoticeIsError, setConfirmationNoticeIsError] = useState(false);
 
   const update = (field) => (e) => {
     const value = e.target.value;
@@ -56,7 +53,7 @@ export default function BuyerRegisterPage() {
     if (!form.fullName.trim()) next.fullName = t('auth.buyerRegister.errorFullNameRequired');
     if (!form.emailOrPhone.trim()) {
       next.emailOrPhone = t('auth.login.errorEmailOrPhoneRequired');
-    } else if (!isValidEmailOrPhone(form.emailOrPhone)) {
+    } else if (!isValidEmail(form.emailOrPhone)) {
       next.emailOrPhone = t('auth.login.errorEmailOrPhoneInvalid');
     }
     if (!form.password) {
@@ -77,14 +74,16 @@ export default function BuyerRegisterPage() {
     setIsSubmitting(true);
     setErrors((prev) => ({ ...prev, form: '' }));
     try {
-      await registerInit({
+      const result = await registerInit({
         fullName: form.fullName.trim(),
         emailOrPhone: form.emailOrPhone.trim(),
         password: form.password,
         role: 'buyer',
       });
       setStep(2);
-      startResendTimer();
+      setConfirmationNotice(result.emailSent ? '' : t('auth.buyerRegister.emailSendFailed'));
+      setConfirmationNoticeIsError(!result.emailSent);
+      if (result.emailSent) startResendTimer();
     } catch (err) {
       if (err.fields) setErrors((prev) => ({ ...prev, ...err.fields }));
       else setErrors((prev) => ({ ...prev, form: err.message }));
@@ -108,24 +107,19 @@ export default function BuyerRegisterPage() {
 
   const handleResend = async () => {
     try {
-      await resendConfirmation(form.emailOrPhone.trim());
-      startResendTimer();
+      const result = await resendConfirmation(form.emailOrPhone.trim());
+      setConfirmationNotice(
+        result.emailSent
+          ? t('auth.login.confirmLinkSent')
+          : t('auth.buyerRegister.emailSendFailed'),
+      );
+      setConfirmationNoticeIsError(!result.emailSent);
+      if (result.emailSent) startResendTimer();
     } catch (err) {
-      setErrors({ confirm: err.message });
+      setConfirmationNotice(err.message || t('auth.login.resendFailed'));
+      setConfirmationNoticeIsError(true);
     }
   };
-
-  // The confirmation LINK is what actually signs the user in — Supabase
-  // parses it and fires onAuthStateChange, which updates `isLoggedIn`
-  // globally. If that happens in this same browser (same tab after a
-  // full-page redirect, or a different tab synced via localStorage), just
-  // react to it here instead of waiting for any explicit submit.
-  useEffect(() => {
-    if (step === 2 && isLoggedIn && !verified) {
-      setVerified(true);
-      setTimeout(() => navigate('/'), 1500);
-    }
-  }, [step, isLoggedIn, verified, navigate]);
 
   return (
     <AuthPageShell tone="orange">
@@ -150,6 +144,8 @@ export default function BuyerRegisterPage() {
               <Input
                 label={t('auth.login.emailOrPhoneLabel')}
                 value={form.emailOrPhone}
+                type="email"
+                autoComplete="email"
                 onChange={update('emailOrPhone')}
                 onBlur={validateStep1}
                 error={errors.emailOrPhone}
@@ -197,7 +193,6 @@ export default function BuyerRegisterPage() {
                 variant="orange"
                 fullWidth
                 loading={isSubmitting}
-                disabled={!form.agreed}
                 onClick={handleContinue}
               >
                 {t('auth.buyerRegister.continue')}
@@ -206,7 +201,7 @@ export default function BuyerRegisterPage() {
           </>
         )}
 
-        {step === 2 && !verified && (
+        {step === 2 && (
           <>
             <div className="flex justify-center">
               <ImagePlaceholder
@@ -219,8 +214,10 @@ export default function BuyerRegisterPage() {
               subtitle={t('auth.buyerRegister.verifySubtitle').replace('{value}', form.emailOrPhone)}
             />
             <div className="mt-6 space-y-6">
-              {errors.confirm && (
-                <p className="text-center text-xs text-status-danger">{errors.confirm}</p>
+              {confirmationNotice && (
+                <p className={`text-center text-xs ${confirmationNoticeIsError ? 'text-status-danger' : 'text-status-success'}`}>
+                  {confirmationNotice}
+                </p>
               )}
               <p className="text-center text-sm text-text-secondary">
                 {resendTimer > 0 ? (
@@ -245,18 +242,6 @@ export default function BuyerRegisterPage() {
           </>
         )}
 
-        {verified && (
-          <div className="flex flex-col items-center py-8 text-center">
-            <ImagePlaceholder
-              className="h-24 w-24 rounded-2xl"
-              alt="Ilustrasi berhasil — ganti dengan foto asli"
-            />
-            <p className="mt-4 font-heading text-lg font-bold text-text-primary">
-              {t('auth.buyerRegister.verifiedTitle')}
-            </p>
-            <p className="mt-1 text-sm text-text-secondary">{t('auth.buyerRegister.verifiedSubtitle')}</p>
-          </div>
-        )}
       </AuthCard>
     </AuthPageShell>
   );

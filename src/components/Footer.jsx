@@ -15,12 +15,12 @@ export default function Footer() {
   const { t } = useLanguage();
 
   return (
-    <footer className="relative overflow-hidden bg-brand-burgundy text-white">
+    <footer className="footer-wave relative w-full overflow-x-clip bg-[var(--navy-dark)] text-white">
       <PawPrintPattern className="text-white" opacity={0.06} density="sparse" />
-      <div className="relative mx-auto max-w-container px-4 py-12 md:px-6 lg:px-8 lg:py-16">
+      <div className="relative mx-auto max-w-container px-4 pb-8 pt-14 md:px-6 md:pt-16 lg:px-8 lg:pt-20">
         <div className="grid gap-10 md:grid-cols-3">
           <div className="space-y-4">
-            <Logo variant="light" />
+            <Logo variant="light" className="scale-110 origin-left" />
             <p className="max-w-xs text-sm leading-relaxed text-white/70">
               {t('footer.tagline')}
             </p>
@@ -33,7 +33,7 @@ export default function Footer() {
                 <li key={link.key}>
                   <Link
                     to={link.href}
-                    className="text-sm text-white/70 transition-colors duration-200 hover:text-white"
+                    className="text-sm text-white/70 transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                   >
                     {t(`nav.${link.key}`)}
                   </Link>
@@ -66,19 +66,19 @@ export default function Footer() {
           <div className="flex items-center gap-4">
             <Link
               to="/syarat-ketentuan"
-              className="transition-colors duration-200 hover:text-white"
+              className="transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             >
               {t('footer.syarat')}
             </Link>
             <Link
               to="/kebijakan-privasi"
-              className="transition-colors duration-200 hover:text-white"
+              className="transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             >
               {t('footer.privasi')}
             </Link>
             <Link
               to="/kebijakan-pembatalan"
-              className="transition-colors duration-200 hover:text-white"
+              className="transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             >
               {t('footer.pembatalan')}
             </Link>

@@ -16,7 +16,6 @@ export default function ForgotPasswordPage() {
   const [fieldError, setFieldError] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [status, setStatus] = useState('idle'); // 'idle' | 'sending' | 'sent'
-  const [sentTo, setSentTo] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,7 +32,6 @@ export default function ForgotPasswordPage() {
     setStatus('sending');
     try {
       await requestPasswordReset(email.trim());
-      setSentTo(email.trim());
       setStatus('sent');
     } catch (err) {
       setSubmitError(err.message || t('auth.forgotPassword.errorSend'));
@@ -49,8 +47,7 @@ export default function ForgotPasswordPage() {
         {status === 'sent' ? (
           <div className="space-y-4">
             <div className="rounded-xl bg-status-success/10 px-4 py-3 text-sm text-text-primary">
-              {t('auth.forgotPassword.successSubtitle')}{' '}
-              <span className="font-semibold">{sentTo}</span>
+              {t('auth.forgotPassword.successSubtitle')}
             </div>
             <Button variant="outline" fullWidth onClick={() => setStatus('idle')}>
               {t('auth.forgotPassword.sendAgain')}

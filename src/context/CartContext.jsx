@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 const STORAGE_KEY = 'furkeeper_cart';
+const SNAPSHOT_KEY = 'furkeeper_cart_snapshot';
 const CartContext = createContext(null);
 
 function makeLineId(productId, variant) {
@@ -45,6 +46,31 @@ function readCart() {
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
+  }
+}
+
+function readSnapshot() {
+  try {
+    const raw = localStorage.getItem(SNAPSHOT_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSnapshot(items) {
+  try {
+    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(items));
+  } catch {
+    // Storage can be unavailable (private mode/quota). Checkout still works.
+  }
+}
+
+function clearSnapshot() {
+  try {
+    localStorage.removeItem(SNAPSHOT_KEY);
+  } catch {
+    // Ignore storage errors.
   }
 }
 
@@ -97,6 +123,40 @@ export function CartProvider({ children }) {
       setItems((prev) => prev.filter((item) => !item.checked));
     };
 
+    // Remember the items that were sent to checkout. The active cart is
+    // cleared while payment is pending; if the payment fails or expires we
+    // restore this snapshot so the buyer does not have to re-add products.
+    const saveCheckoutSnapshot = (lines) => {
+      const source = Array.isArray(lines) && lines.length ? lines : items.filter((item) => item.checked);
+      writeSnapshot(source.map((item) => ({ ...item })));
+      return source.length;
+    };
+
+    const restoreCheckoutSnapshot = () => {
+      const snapshot = readSnapshot();
+      if (!snapshot.length) return 0;
+      setItems((prev) =>
+        snapshot.reduce(
+          (acc, line) =>
+            mergeLine(acc, {
+              productId: line.productId,
+              name: line.name,
+              variant: line.variant,
+              price: line.price,
+              quantity: line.quantity,
+              storeName: line.storeName,
+              storeId: line.storeId,
+              stock: line.stock,
+            }),
+          prev,
+        ),
+      );
+      clearSnapshot();
+      return snapshot.length;
+    };
+
+    const clearCheckoutSnapshot = () => clearSnapshot();
+
     const selectedItems = items.filter((item) => item.checked);
     const selectedCount = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
     const selectedSubtotal = selectedItems.reduce(
@@ -113,6 +173,9 @@ export function CartProvider({ children }) {
       toggleItem,
       toggleStore,
       removeChecked,
+      saveCheckoutSnapshot,
+      restoreCheckoutSnapshot,
+      clearCheckoutSnapshot,
       selectedItems,
       selectedCount,
       selectedSubtotal,

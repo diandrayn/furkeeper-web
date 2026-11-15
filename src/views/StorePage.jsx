@@ -31,7 +31,7 @@ import { useChat } from '../hooks/useChat';
 import { useLanguage } from '../i18n/LanguageContext';
 import { formatDateId, getInitials } from '../utils/status';
 import { getRatingDistribution } from '../data/mockReviews';
-import { supabase } from '../lib/supabaseClient';
+import { submitReport as submitStoreReport } from '../utils/reports';
 import {
   fetchPublicStore,
   fetchStoreProducts,
@@ -259,13 +259,11 @@ export default function StorePage() {
     setReportSending(true);
     setReportError('');
     try {
-      await supabase.from('reports').insert({
+      await submitStoreReport({
         reporter_id: user.id,
-        reported_store_id: store.id,
+        reportedStoreId: store.id,
         category: report.category,
         description: report.description.trim(),
-        priority: 'normal',
-        status: 'baru',
       });
       setReportDone(true);
       setTimeout(() => {

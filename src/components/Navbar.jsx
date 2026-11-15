@@ -92,27 +92,24 @@ export default function Navbar({ activeLink = 'Beranda' }) {
   }, [menuOpen]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 bg-brand-cream/90 backdrop-blur-sm">
       <nav className="mx-auto flex max-w-container items-center justify-between px-4 py-3 md:px-6 lg:px-8">
         <Logo />
 
-        <ul className="hidden items-center gap-8 lg:flex">
+        <ul className="hidden items-center gap-1 rounded-full bg-white px-1.5 py-1 shadow-sm ring-1 ring-black/5 lg:flex">
           {navLinks.map((link) => {
             const isActive = link.label === activeLink;
             return (
               <li key={link.label}>
                 <Link
                   to={link.href}
-                  className={`relative text-sm font-medium transition-colors duration-200 ${
+                  className={`block rounded-full px-4 py-1.5 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-burgundy/40 ${
                     isActive
-                      ? 'text-brand-burgundy'
+                      ? 'bg-brand-burgundy text-white'
                       : 'text-text-secondary hover:text-brand-burgundy'
                   }`}
                 >
                   {t(`nav.${navKeyByHref[link.href] || 'beranda'}`)}
-                  {isActive && (
-                    <span className="absolute -bottom-1 left-0 h-0.5 w-full rounded-full bg-brand-burgundy" />
-                  )}
                 </Link>
               </li>
             );

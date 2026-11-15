@@ -2,17 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from '@/lib/router';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import Button from '../components/Button';
 import WaveDivider from '../components/decorative/WaveDivider';
 import Card from '../components/Card';
 import AddressCard from '../components/AddressCard';
 import AddressModal from '../components/AddressModal';
-import PaymentMethodOption from '../components/PaymentMethodOption';
 import OrderSummaryCard from '../components/OrderSummaryCard';
 import ImagePlaceholder from '../components/ImagePlaceholder';
 import { useCart } from '../context/CartContext';
 import { useAddresses } from '../context/AddressContext';
 import { useAuth } from '../hooks/useAuth';
-import { paymentMethods, getShippingFee } from '../data/mockCheckout';
+import { getShippingFee } from '../lib/shipping';
 import { submitOrder } from '../utils/orders';
 import { formatPrice } from '../utils/validation';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -41,23 +41,26 @@ export default function CheckoutPage() {
   }, [user, navigate]);
 
   const { t } = useLanguage();
-  const { selectedItems, selectedSubtotal, removeChecked } = useCart();
-  const { addresses, addAddress } = useAddresses();
+  const { selectedItems, selectedSubtotal, removeChecked, saveCheckoutSnapshot } = useCart();
+  const { addresses, addAddress, isLoading: addressesLoading, loadError: addressLoadError } = useAddresses();
   const defaultAddressId = addresses.find((item) => item.isDefault)?.id || addresses[0]?.id || '';
   const [addressId, setAddressId] = useState(defaultAddressId);
   const [modalOpen, setModalOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('qris');
-  const [shippingReady, setShippingReady] = useState(false);
+  const [shippingReadyFor, setShippingReadyFor] = useState(null);
 
-  const address = addresses.find((item) => item.id === addressId) || addresses.find((item) => item.isDefault) || addresses[0];
+  // Addresses load asynchronously from the API, so the stored selection may
+  // not exist yet. Fall back to the default/first address instead of showing
+  // the stale mock address or sending an unknown id to the server.
+  const activeAddressId = addresses.some((item) => item.id === addressId) ? addressId : defaultAddressId;
+  const address = addresses.find((item) => item.id === activeAddressId) || addresses.find((item) => item.isDefault) || addresses[0];
   const groups = useMemo(() => groupByStore(selectedItems), [selectedItems]);
 
   useEffect(() => {
-    setShippingReady(false);
-    const timer = setTimeout(() => setShippingReady(true), 900);
+    const timer = setTimeout(() => setShippingReadyFor(activeAddressId), 900);
     return () => clearTimeout(timer);
-  }, [addressId]);
+  }, [activeAddressId]);
 
+  const shippingReady = shippingReadyFor === activeAddressId;
   const shippingByStore = useMemo(() => {
     if (!address || !shippingReady) return [];
     return groups.map((group) => ({
@@ -80,25 +83,20 @@ export default function CheckoutPage() {
     try {
       const orderIds = [];
       for (const group of groups) {
-        const subtotal = group.items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0);
-        const shippingCost = getShippingFee(address.district);
+        // Server recomputes subtotal, shipping, and total from the database.
         const id = await submitOrder({
           addressId: address.id,
-          paymentMethod,
-          subtotal,
-          shippingCost,
-          total: subtotal + shippingCost,
           items: group.items.map((item) => ({
-            store_id: item.storeId || null,
-            product_id: item.productId || null,
-            name: item.name,
+            productId: item.productId || null,
             variant: item.variant || '',
             quantity: item.quantity || 1,
-            price: item.price || 0,
           })),
         });
         orderIds.push(id);
       }
+      // Keep a snapshot so a failed/expired payment can put the items back
+      // into the cart, then clear the active cart to avoid double checkout.
+      saveCheckoutSnapshot(selectedItems);
       removeChecked();
       navigate(`/pembayaran/${orderIds.join(',')}`);
     } catch (err) {
@@ -141,7 +139,29 @@ export default function CheckoutPage() {
           <div className="space-y-5">
             <Card>
               <h2 className="mb-4 font-heading text-lg font-bold">{t('checkout.shippingAddress')}</h2>
-              <AddressCard address={address} onChange={() => setModalOpen(true)} />
+              {address ? (
+                <AddressCard address={address} onChange={() => setModalOpen(true)} />
+              ) : (
+                <div className="space-y-3">
+                  <p
+                    className="text-sm text-text-secondary"
+                    role={addressLoadError ? 'alert' : 'status'}
+                  >
+                    {addressLoadError
+                      || (addressesLoading ? t('checkout.loadingAddresses') : t('checkout.noSavedAddress'))}
+                  </p>
+                  {!addressesLoading && (
+                    <Button variant="outline" onClick={() => setModalOpen(true)}>
+                      {t('addresses.addNew')}
+                    </Button>
+                  )}
+                  {addressLoadError && (
+                    <Button variant="outline" onClick={() => window.location.reload()}>
+                      {t('checkout.retryAddressLoad')}
+                    </Button>
+                  )}
+                </div>
+              )}
             </Card>
 
             <Card>
@@ -201,17 +221,8 @@ export default function CheckoutPage() {
             </Card>
 
             <Card>
-              <h2 className="mb-4 font-heading text-lg font-bold">{t('checkout.paymentMethod')}</h2>
-              <div className="space-y-2">
-                {paymentMethods.map((method) => (
-                  <PaymentMethodOption
-                    key={method.value}
-                    {...method}
-                    selected={paymentMethod === method.value}
-                    onSelect={setPaymentMethod}
-                  />
-                ))}
-              </div>
+              <h2 className="mb-2 font-heading text-lg font-bold">{t('checkout.paymentInfoTitle')}</h2>
+              <p className="text-sm text-text-secondary">{t('checkout.paymentInfoDesc')}</p>
             </Card>
           </div>
 
@@ -225,7 +236,12 @@ export default function CheckoutPage() {
                 totalLabel={t('checkout.totalPayLabel')}
                 total={shippingReady ? grandTotal : selectedSubtotal}
                 actionLabel={t('checkout.payNow')}
-                actionDisabled={!shippingReady || submitting}
+                actionDisabled={!shippingReady || addressesLoading || !address || submitting}
+                helperText={
+                  addressesLoading
+                    ? t('checkout.loadingAddresses')
+                    : addressLoadError || (!address ? t('checkout.noSavedAddress') : undefined)
+                }
                 onAction={handlePay}
               />
             </div>
@@ -242,7 +258,12 @@ export default function CheckoutPage() {
           totalLabel={t('checkout.totalPayLabel')}
           total={shippingReady ? grandTotal : selectedSubtotal}
           actionLabel={t('checkout.payNow')}
-          actionDisabled={!shippingReady || submitting}
+          actionDisabled={!shippingReady || addressesLoading || !address || submitting}
+          helperText={
+            addressesLoading
+              ? t('checkout.loadingAddresses')
+              : addressLoadError || (!address ? t('checkout.noSavedAddress') : undefined)
+          }
           onAction={handlePay}
         />
       </div>
@@ -250,14 +271,14 @@ export default function CheckoutPage() {
       <AddressModal
         open={modalOpen}
         addresses={addresses}
-        selectedId={addressId}
+        selectedId={activeAddressId}
         onSelect={(id) => {
           setAddressId(id);
           setModalOpen(false);
         }}
-        onAdd={(address) => {
-          addAddress(address);
-          setAddressId(address.id);
+        onAdd={async (newAddress) => {
+          const saved = await addAddress(newAddress);
+          setAddressId(saved?.id || newAddress.id);
           setModalOpen(false);
         }}
         onClose={() => setModalOpen(false)}

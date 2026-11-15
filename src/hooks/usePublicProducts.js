@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchPublicProducts } from '../utils/products';
+import { describeError } from '../lib/errors';
 
 /**
  * Loads real seller products from Supabase for /produk and /produk/:id.
@@ -22,7 +23,7 @@ export function usePublicProducts() {
       })
       .catch((err) => {
         if (!active) return;
-        console.error('fetchPublicProducts failed:', err);
+        console.error('fetchPublicProducts failed:', describeError(err));
         setError(err);
       })
       .finally(() => {

@@ -7,7 +7,7 @@
 // (see supabase/admin_roles_migration.sql). It keeps an Admin Support from
 // wandering into Keuangan by clicking around; it does not stop someone
 // calling the API directly with their own session.
-import { supabase } from '../lib/supabaseClient';
+import { apiGet } from '../lib/apiClient';
 
 const ALL = '*';
 
@@ -28,20 +28,8 @@ export function canAccessAdminPath(scope, pathname) {
   return allowed.some((base) => (base === '/admin' ? path === '/admin' : path === base || path.startsWith(`${base}/`)));
 }
 
-/** The signed-in admin's own scope, straight from profiles. Resolves to
- * 'full' if the column/migration is missing or the read fails, so a hiccup
- * never locks an admin out of their own panel. */
+/** The signed-in admin's scope, loaded from the MySQL-backed session API. */
 export async function fetchMyAdminScope() {
-  try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return 'full';
-    const { data, error } = await supabase.from('profiles').select('admin_scope').eq('id', user.id).single();
-    if (error) throw error;
-    return data?.admin_scope || 'full';
-  } catch (err) {
-    console.error('fetchMyAdminScope failed:', err);
-    return 'full';
-  }
+  const { user } = await apiGet('/api/me');
+  return user?.adminScope || 'full';
 }

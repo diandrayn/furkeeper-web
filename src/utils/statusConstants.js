@@ -15,7 +15,7 @@ export const BOOKING_STATUSES = ['pending_confirmation', 'confirmed', 'in_progre
 
 export const STATUS_LABELS = {
   id: {
-    pending_payment: 'Menunggu Konfirmasi',
+    pending_payment: 'Menunggu Pembayaran',
     processing: 'Diproses',
     shipped: 'Dikirim',
     completed: 'Selesai',
@@ -25,7 +25,7 @@ export const STATUS_LABELS = {
     in_progress: 'Berlangsung',
   },
   en: {
-    pending_payment: 'Awaiting Confirmation',
+    pending_payment: 'Waiting for Payment',
     processing: 'Processing',
     shipped: 'Shipped',
     completed: 'Completed',

@@ -8,6 +8,18 @@
   --font-body: var(--font-inter), 'Inter', sans-serif;
   /* Distinctive display font — reserved for the page H1 only. */
   --font-hero: var(--font-lilita), 'Lilita One', cursive;
+
+  /* Landing-page palette (Petman-inspired). The existing navy stays the
+     primary dark accent; the new warm colours below are used by the
+     homepage hero, partner section, and footer wave. */
+  --navy: #1E2A6B;
+  --navy-dark: #131A44;
+  --ungu: #5B5694;
+  --kuning: #FFC95C;
+  --oranye: #F4A24C;
+  --krem: #FFF8EC;
+  --lavender: #C9C5E8;
+  --pink: #F9D5DF;
 }
 
 @layer base {
@@ -61,6 +73,61 @@
   .dual-range::-moz-range-thumb {
     @apply pointer-events-auto relative z-10 h-4 w-4 cursor-pointer appearance-none rounded-full border-2 border-white bg-brand-burgundy shadow-sm;
   }
+}
+
+/* ---- Homepage hero ------------------------------------------------- */
+/* The oversized brand word behind the pets. Fluid by design: it scales with
+   the viewport until it reaches the 11rem ceiling on wide screens. */
+.hero-word {
+  font-family: var(--font-hero), 'Lilita One', cursive;
+  font-size: clamp(4rem, 14vw, 11rem);
+  line-height: 0.82;
+  letter-spacing: -0.015em;
+  padding-bottom: 0.08em;
+  background-image: linear-gradient(180deg, var(--krem) 0%, var(--lavender) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---- Partner CTA tab panel transition ------------------------------- */
+@keyframes partner-panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--partner-shift, 1.25rem));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.partner-panel-enter {
+  animation: partner-panel-in 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ---- Footer wave ---------------------------------------------------- */
+/* The wave is painted above the footer with the footer's own colour, so the
+   SVG edge blends into the solid footer body with no seam. */
+.footer-wave {
+  position: relative;
+}
+
+.footer-wave::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% - 1px);
+  left: 0;
+  width: 100%;
+  height: clamp(4rem, 6vw, 5rem);
+  background-color: var(--navy-dark);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 80' preserveAspectRatio='none'%3E%3Cpath fill='%23fff' d='M0,40 C120,16 240,16 360,40 C480,64 600,64 720,40 C840,16 960,16 1080,40 C1200,64 1320,64 1440,40 L1440,80 L0,80 Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 80' preserveAspectRatio='none'%3E%3Cpath fill='%23fff' d='M0,40 C120,16 240,16 360,40 C480,64 600,64 720,40 C840,16 960,16 1080,40 C1200,64 1320,64 1440,40 L1440,80 L0,80 Z'/%3E%3C/svg%3E");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  pointer-events: none;
 }
 
 /* Global motion-safety net (applies to EVERY hover/click animation site-wide,

@@ -29,6 +29,26 @@ function statusBadgeClass(status) {
   return 'bg-gray-100 text-text-secondary';
 }
 
+const PAYMENT_STATUS_LABELS = {
+  pending: 'Menunggu',
+  paid: 'Lunas',
+  failed: 'Gagal',
+  expired: 'Kedaluwarsa',
+  challenge: 'Ditinjau',
+  refunded: 'Dikembalikan',
+};
+
+const PAYMENT_TYPE_LABELS = {
+  credit_card: 'Kartu Kredit/Debit',
+  bank_transfer: 'Transfer Bank',
+  echannel: 'Mandiri Bill',
+  cstore: 'Gerai Retail',
+  qris: 'QRIS',
+  gopay: 'GoPay',
+  shopeepay: 'ShopeePay',
+  akulaku: 'Akulaku',
+};
+
 const TABS = [
   { key: 'orders', label: 'Transaksi Produk', icon: Package },
   { key: 'bookings', label: 'Booking Jasa', icon: Scissors },
@@ -172,7 +192,9 @@ function OrderRow({ order, expanded, onToggle }) {
       {expanded && (
         <div className="space-y-3 border-t border-gray-100 bg-brand-cream/40 p-4">
           <div className="grid grid-cols-2 gap-3 text-xs text-text-secondary sm:grid-cols-4">
-            <div><span className="block text-text-primary font-medium">Metode Bayar</span>{order.paymentMethod || '-'}</div>
+            <div><span className="block text-text-primary font-medium">Metode Bayar</span>{PAYMENT_TYPE_LABELS[order.payment?.method] || order.payment?.method || order.paymentMethod || '-'}</div>
+            <div><span className="block text-text-primary font-medium">Status Bayar</span>{order.payment ? PAYMENT_STATUS_LABELS[order.payment.status] || order.payment.status : '-'}</div>
+            <div><span className="block text-text-primary font-medium">Waktu Bayar</span>{order.payment?.paidAt ? formatDateId(order.payment.paidAt) : '-'}</div>
             <div><span className="block text-text-primary font-medium">Subtotal</span>{formatRupiah(order.subtotal)}</div>
             <div><span className="block text-text-primary font-medium">Ongkir</span>{formatRupiah(order.shippingCost)}</div>
             <div><span className="block text-text-primary font-medium">No. Resi</span>{order.trackingNumber || '-'}</div>

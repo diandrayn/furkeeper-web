@@ -29,14 +29,5 @@ export const paymentMethods = [
   { value: 'card', label: 'Kartu Kredit', icon: 'card' },
 ];
 
-export function getShippingFee(district) {
-  const fees = {
-    Klojen: 8000,
-    Lowokwaru: 10000,
-    Blimbing: 12000,
-    Sukun: 13000,
-    Kedungkandang: 15000,
-    Rungkut: 18000,
-  };
-  return fees[district] || 12000;
-}
+// Single source of truth for shipping fees, shared by client and server.
+export { getShippingFee } from '../lib/shipping';

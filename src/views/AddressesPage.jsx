@@ -13,6 +13,7 @@ export default function AddressesPage() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyAddressForm);
   const [error, setError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const openAdd = () => {
     setEditing(null);
@@ -35,7 +36,7 @@ export default function AddressesPage() {
     setFormOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.label.trim() || !form.name.trim() || !form.phone.trim() || !form.district || !form.address.trim()) {
       setError(t('addresses.errorRequired'));
       return;
@@ -46,11 +47,18 @@ export default function AddressesPage() {
       name: form.name.trim(),
       city: 'Malang',
     };
-    if (editing) updateAddress(editing.id, payload);
-    else addAddress({ id: `addr-${Date.now()}`, ...payload });
-    setFormOpen(false);
-    setEditing(null);
-    setError('');
+    setIsSaving(true);
+    try {
+      if (editing) await updateAddress(editing.id, payload);
+      else await addAddress({ id: `addr-${Date.now()}`, ...payload });
+      setFormOpen(false);
+      setEditing(null);
+      setError('');
+    } catch (err) {
+      setError(err?.message || t('addresses.saveError'));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -115,10 +123,10 @@ export default function AddressesPage() {
             <AddressFormFields form={form} onChange={setForm} idPrefix="profile-address" />
             {error && <p className="mt-2 text-xs text-status-danger">{error}</p>}
             <div className="mt-5 flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => setFormOpen(false)}>
+              <Button variant="outline" className="flex-1" disabled={isSaving} onClick={() => setFormOpen(false)}>
                 {t('addresses.cancel')}
               </Button>
-              <Button variant="primary" className="flex-1" onClick={handleSave}>
+              <Button variant="primary" className="flex-1" loading={isSaving} onClick={handleSave}>
                 {t('addresses.save')}
               </Button>
             </div>

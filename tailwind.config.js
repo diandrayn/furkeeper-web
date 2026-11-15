@@ -27,6 +27,8 @@ export default {
           // Changing this one value re-skins the entire site's primary
           // dark accent (nav, headings, buttons, icons) in one place.
           burgundy: '#1E2A6B',
+          'burgundy-dark': '#131A44',
+          mist: '#CFD4F2',
           // Same trick for "peach": now a soft blush pink instead of peach,
           // used for light panel backgrounds site-wide.
           peach: '#FBD9E3',

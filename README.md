@@ -1,41 +1,58 @@
-# React + Vite
+# FurKeeper
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+FurKeeper is a Next.js application backed by MySQL and Prisma.
 
-Currently, two official plugins are available:
+## Requirements
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js supported by the installed Next.js version
+- MySQL
 
-## React Compiler
+## Local setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. Install dependencies:
 
-## Expanding the ESLint configuration
+   ```sh
+   npm install
+   ```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+2. Copy `.env.example` to `.env`, set `DATABASE_URL` to the MySQL database,
+   and set a private, random `SESSION_SECRET` for signing login cookies.
+   Configure `RESEND_API_KEY`, `EMAIL_FROM`, and `APP_URL` to enable registration
+   confirmation and password reset emails.
+3. Generate the Prisma Client and synchronize a development database with the
+   schema:
 
-## Backend (Supabase)
+   ```sh
+   npx prisma generate
+   npx prisma db push
+   ```
 
-Auth (sign up, login, Google OAuth) is already wired to Supabase — see
-`src/lib/supabaseClient.js` and `src/utils/api.js`. The rest of the app's
-data (products, services, orders, bookings, chat, reviews, etc.) still runs
-on the mock files in `src/data/`.
+   `prisma/schema.prisma` is the source of truth for the database structure.
+   Review database changes and back up existing data before synchronizing.
+   Do not run `prisma db push` against production; apply reviewed migrations
+   there instead, using `npx prisma migrate deploy`.
+4. Start the development server:
 
-To start the real backend:
+   ```sh
+   npm run dev
+   ```
 
-1. Create a project at https://supabase.com.
-2. In **Project Settings → API**, copy the Project URL and the `anon` public key.
-3. Copy `.env.example` to `.env` and fill those two values in.
-4. In **SQL Editor**, run `supabase/schema.sql` — it creates every table
-   (profiles, addresses, pets, stores, products, services, orders, bookings,
-   reviews, chat, notifications, partner applications) with Row Level
-   Security policies already applied.
-5. In **Authentication → Providers**, make sure Email is enabled (and Google,
-   if you want that login button to work).
-6. Restart `npm run dev` so Vite picks up the new `.env` values.
+## Production build
 
-From there, each context in `src/context/` (CartContext, PetContext,
-DashboardContext, ChatContext, etc.) still needs its mock-data calls swapped
-for `supabase.from('table').select()/insert()/update()` calls — the schema
-and RLS policies are ready for that, table by table.
+```sh
+npm run build
+npm start
+```
+
+The build generates Prisma Client before compiling the application. Configure
+`DATABASE_URL` and `SESSION_SECRET` in the deployment environment. To enable
+registration confirmation, resend, and password reset emails, configure these
+server-only variables with a verified sender in Resend:
+
+```env
+RESEND_API_KEY=
+EMAIL_FROM="FurKeeper <noreply@your-verified-domain.com>"
+APP_URL=https://your-domain.com
+```
+
+Google sign-in is not available in the MySQL authentication implementation.

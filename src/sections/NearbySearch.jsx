@@ -5,6 +5,7 @@ import { districts } from '../data/mockData';
 import { useLanguage } from '../i18n/LanguageContext';
 import { getInitials } from '../utils/status';
 import { fetchStoreList } from '../utils/stores';
+import { describeError, errorMessage } from '../lib/errors';
 import PawLoader from '../components/decorative/PawLoader';
 
 const districtKey = (name) => (name || '').toLowerCase();
@@ -28,20 +29,19 @@ export default function NearbySearch() {
   // only stores owned by non-suspended users appear (search_stores RPC).
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    setError('');
     fetchStoreList({ district, limit: 6, sort: 'rating' })
       .then((res) => {
         if (!active) return;
         setStores(res.rows);
         setTotal(res.total);
+        setError('');
         setLoading(false);
       })
       .catch((err) => {
         if (!active) return;
-        console.error('NearbySearch fetchStoreList error:', err);
-        const msg = err?.message || err?.details || err?.error_description || JSON.stringify(err);
-        setError(msg || 'Gagal memuat toko.');
+        // describeError: raw Error objects log as `{}` (non-enumerable props).
+        console.error('NearbySearch fetchStoreList error:', describeError(err));
+        setError(errorMessage(err, 'Gagal memuat toko.'));
         setLoading(false);
       });
     return () => {
@@ -50,8 +50,8 @@ export default function NearbySearch() {
   }, [district]);
 
   return (
-    <section id="sekitar" className="mx-auto max-w-container px-4 py-16 scroll-mt-20 md:px-6 md:py-20 lg:px-8 lg:py-24">
-      <div className="rounded-3xl bg-gradient-to-br from-brand-orange-start to-brand-orange-end px-6 py-10 md:px-10 md:py-14">
+    <section id="sekitar" className="scroll-mt-24">
+      <div className="rounded-[2rem] bg-brand-burgundy px-6 py-10 md:px-10 md:py-14">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="font-heading text-2xl font-bold text-white md:text-3xl">
             {t('nearbySearch.title')}
@@ -65,7 +65,11 @@ export default function NearbySearch() {
               <MapPin className="h-5 w-5 shrink-0 text-brand-orange-end" aria-hidden="true" />
               <select
                 value={district}
-                onChange={(e) => setDistrict(e.target.value)}
+                onChange={(e) => {
+                  setDistrict(e.target.value);
+                  setLoading(true);
+                  setError('');
+                }}
                 className="flex-1 appearance-none bg-transparent text-sm font-medium text-text-primary outline-none"
                 aria-label={t('nearbySearch.selectLabel')}
               >

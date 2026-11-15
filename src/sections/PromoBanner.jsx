@@ -103,9 +103,9 @@ export default function PromoBanner() {
   };
 
   return (
-    <section className="mx-auto max-w-container px-4 py-16 md:px-6 md:py-20 lg:px-8 lg:py-24">
+    <section>
       <div
-        className="playful-interactive group relative touch-pan-y select-none overflow-hidden rounded-2xl"
+        className="playful-interactive group relative touch-pan-y select-none overflow-hidden rounded-[2rem]"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -139,7 +139,7 @@ export default function PromoBanner() {
           type="button"
           onClick={() => goTo(index - 1)}
           aria-label={t('promoBanner.prev')}
-          className="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-brand-burgundy opacity-0 shadow-md transition-opacity duration-200 hover:bg-white group-hover:opacity-100"
+          className="absolute left-3 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-brand-burgundy shadow-md transition-colors duration-200 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-burgundy/40 md:flex"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
@@ -147,7 +147,7 @@ export default function PromoBanner() {
           type="button"
           onClick={() => goTo(index + 1)}
           aria-label={t('promoBanner.next')}
-          className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-brand-burgundy opacity-0 shadow-md transition-opacity duration-200 hover:bg-white group-hover:opacity-100"
+          className="absolute right-3 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-brand-burgundy shadow-md transition-colors duration-200 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-burgundy/40 md:flex"
         >
           <ChevronRight className="h-5 w-5" />
         </button>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from '@/lib/router';
-import { MessageCircle } from 'lucide-react';
+import { CreditCard, MessageCircle } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import WaveDivider from '../components/decorative/WaveDivider';
@@ -15,12 +15,20 @@ import ReportButton from '../components/ReportButton';
 import PawLoader from '../components/decorative/PawLoader';
 import { useChat } from '../hooks/useChat';
 import { useAuth } from '../hooks/useAuth';
-import { supabase } from '../lib/supabaseClient';
 import { fetchOrderById, setOrderStatus } from '../utils/orders';
 import { createReview, hasReviewed } from '../utils/reviews';
+import { paymentStatusKey, paymentTypeKey } from '../utils/payments';
 import { ORDER_FLOW, statusLabel, statusBadge } from '../utils/statusConstants';
+import { formatDateId } from '../utils/status';
 import { formatPrice } from '../utils/validation';
 import { useLanguage } from '../i18n/LanguageContext';
+
+function paymentStatusBadge(status) {
+  if (status === 'paid') return 'bg-status-success/20 text-status-success';
+  if (status === 'failed' || status === 'expired') return 'bg-status-danger/15 text-status-danger';
+  if (status === 'challenge') return 'bg-status-warning/30 text-text-primary';
+  return 'bg-status-warning/25 text-[#8a6d1f]';
+}
 
 export default function OrderStatusPage() {
   const { orderId } = useParams();
@@ -61,24 +69,11 @@ export default function OrderStatusPage() {
     load();
   }, [load]);
 
-  // Perbarui otomatis saat penjual mengubah status (realtime + polling ringan).
+  // Perbarui otomatis dari MySQL saat penjual mengubah status.
   useEffect(() => {
     if (!user?.id || !orderId) return undefined;
-    const channel = supabase
-      .channel(`order-status-${orderId}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` },
-        () => {
-          load();
-        },
-      )
-      .subscribe();
     const poller = window.setInterval(() => load(), 30000);
-    return () => {
-      supabase.removeChannel(channel);
-      window.clearInterval(poller);
-    };
+    return () => window.clearInterval(poller);
   }, [user?.id, orderId, load]);
 
   const handleChatSeller = async () => {
@@ -168,6 +163,18 @@ export default function OrderStatusPage() {
   const canConfirm = order.status === 'shipped';
   const canReview = order.status === 'completed' && !reviewed;
 
+  const payment = order.payment || null;
+  const paymentStatus = payment?.status || (order.status === 'pending_payment' ? 'pending' : null);
+  const paymentMethodKey = payment?.method ? paymentTypeKey(payment.method) : null;
+  const paymentMethodLabel = payment?.method
+    ? paymentMethodKey
+      ? t(paymentMethodKey)
+      : payment.method
+    : null;
+  const canPayNow =
+    order.status === 'pending_payment' &&
+    (!payment || ['pending', 'failed', 'expired'].includes(payment.status));
+
   return (
     <>
       <Navbar />
@@ -187,6 +194,47 @@ export default function OrderStatusPage() {
             <OrderStatusStepper stages={ORDER_FLOW} current={order.status} />
           </Card>
         )}
+
+        <Card>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-text-secondary" />
+                <h2 className="font-heading text-lg font-bold text-text-primary">{t('orderStatus.paymentInfo')}</h2>
+              </div>
+              {paymentStatus ? (
+                <p className="flex flex-wrap items-center gap-2 text-sm text-text-secondary">
+                  {t('payment.paymentStatus')}:
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${paymentStatusBadge(paymentStatus)}`}>
+                    {t(paymentStatusKey(paymentStatus))}
+                  </span>
+                </p>
+              ) : (
+                <p className="text-sm text-text-secondary">{t('orderStatus.paymentNoRecord')}</p>
+              )}
+              {paymentMethodLabel && (
+                <p className="text-sm text-text-secondary">
+                  {t('payment.methodLabel')}: <span className="font-medium text-text-primary">{paymentMethodLabel}</span>
+                </p>
+              )}
+              {payment?.paidAt && (
+                <p className="text-sm text-text-secondary">
+                  {t('payment.paidAt')}: <span className="font-medium text-text-primary">{formatDateId(payment.paidAt)}</span>
+                </p>
+              )}
+              {payment?.expiresAt && paymentStatus === 'pending' && (
+                <p className="text-sm text-text-secondary">
+                  {t('payment.expiresAt')}: <span className="font-medium text-text-primary">{formatDateId(payment.expiresAt)}</span>
+                </p>
+              )}
+            </div>
+            {canPayNow && (
+              <Button variant="primary" onClick={() => navigate(`/pembayaran/${encodeURIComponent(order.id)}`)}>
+                {t('orderStatus.payNow')}
+              </Button>
+            )}
+          </div>
+        </Card>
 
         <Card>
           <div className="flex flex-wrap items-center justify-between gap-3">

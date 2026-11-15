@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from './NotificationContext';
 import { useLanguage } from '../i18n/LanguageContext';
-import { supabase } from '../lib/supabaseClient';
+import { apiGet } from '../lib/apiClient';
 import {
   fetchBuyerConversations,
   fetchStoreConversations,
@@ -80,20 +80,12 @@ export function ChatProvider({ children }) {
       if (cached) return cached;
       let href = `/chat/${conversationId}`;
       try {
-        const { data: conv } = await supabase
-          .from('conversations')
-          .select('buyer_id, store_id')
-          .eq('id', conversationId)
-          .maybeSingle();
-        if (conv && conv.buyer_id !== currentUserId && myStoreIdsRef.current.includes(conv.store_id)) {
-          const { data: st } = await supabase
-            .from('stores')
-            .select('kind')
-            .eq('id', conv.store_id)
-            .maybeSingle();
-          href = st?.kind === 'service' ? '/dashboard/jasa/pesan' : '/dashboard/toko/pesan';
+        const conv = await apiGet(`/api/chat/${encodeURIComponent(conversationId)}`, { meta: 1 });
+        if (conv.buyer_id !== currentUserId && myStoreIdsRef.current.includes(conv.store_id)) {
+          href = conv.storeKind === 'service' ? '/dashboard/jasa/pesan' : '/dashboard/toko/pesan';
         }
-      } catch {
+      } catch (error) {
+        console.error('Gagal menentukan tujuan percakapan:', error);
         href = `/chat/${conversationId}`;
       }
       chatHrefCache.current.set(conversationId, href);
@@ -332,8 +324,8 @@ export function ChatProvider({ children }) {
         const summary = await fetchThreadsSummary([conversationId], currentUserId);
         setMessagesByConversation((prev) => ({ ...prev, ...summary.messagesByConversation }));
         setUnreadByConversation((prev) => ({ ...prev, ...summary.unreadCountByConversation }));
-      } catch {
-        // best-effort — a stale unread badge isn't worth surfacing an error for
+      } catch (error) {
+        console.error('Gagal menandai pesan sebagai dibaca:', error);
       }
     },
     [currentUserId, openConversation],

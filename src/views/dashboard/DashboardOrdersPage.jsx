@@ -7,8 +7,8 @@ import Pagination from '../../components/Pagination';
 import EmptyState from '../../components/EmptyState';
 import PawLoader from '../../components/decorative/PawLoader';
 import { useDashboard } from '../../hooks/useDashboard';
-import { supabase } from '../../lib/supabaseClient';
 import { fetchStoreOrders, setOrderStatus } from '../../utils/orders';
+import { paymentStatusKey, paymentTypeKey } from '../../utils/payments';
 import { ORDER_STATUSES, ORDER_TRANSITIONS, statusLabel, statusBadge, nextOrderAction } from '../../utils/statusConstants';
 import { DASHBOARD_PAGE_SIZE } from '../../data/mockDashboard';
 import { formatRelativeTimeId } from '../../utils/status';
@@ -18,10 +18,24 @@ function formatRupiah(value) {
   return `Rp${Number(value || 0).toLocaleString('id-ID')}`;
 }
 
+function paymentStatusBadge(status) {
+  if (status === 'paid') return 'bg-status-success/20 text-status-success';
+  if (status === 'failed' || status === 'expired') return 'bg-status-danger/15 text-status-danger';
+  if (status === 'challenge') return 'bg-status-warning/30 text-text-primary';
+  return 'bg-status-warning/25 text-[#8a6d1f]';
+}
+
 function OrderDetailModal({ order, onClose, onRespond, onCancel, t, lang }) {
   if (!order) return null;
   const action = nextOrderAction(order.status);
   const canCancel = Boolean(ORDER_TRANSITIONS.seller[order.status]?.includes('cancelled'));
+  const payment = order.payment || null;
+  const paymentMethodKey = payment?.method ? paymentTypeKey(payment.method) : null;
+  const paymentMethodLabel = payment?.method
+    ? paymentMethodKey
+      ? t(paymentMethodKey)
+      : payment.method
+    : order.paymentMethod || '-';
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center sm:p-4">
@@ -75,7 +89,14 @@ function OrderDetailModal({ order, onClose, onRespond, onCancel, t, lang }) {
             <span className="mt-0.5 text-text-secondary">
               <CreditCard className="h-4 w-4" />
             </span>
-            <p className="text-text-secondary">{order.paymentMethod || '-'}</p>
+            <div className="space-y-1">
+              <p className="text-text-secondary">{paymentMethodLabel}</p>
+              {payment?.status && (
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${paymentStatusBadge(payment.status)}`}>
+                  {t(paymentStatusKey(payment.status))}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -133,24 +154,11 @@ export default function DashboardOrdersPage() {
     load();
   }, [load]);
 
-  // Pesanan baru masuk otomatis muncul (realtime) + polling ringan.
+  // Poll MySQL for new or updated orders while this dashboard is open.
   useEffect(() => {
     if (!storeId) return undefined;
-    const channel = supabase
-      .channel(`store-orders-${storeId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'order_items', filter: `store_id=eq.${storeId}` },
-        () => {
-          load();
-        },
-      )
-      .subscribe();
     const poller = window.setInterval(() => load(), 30000);
-    return () => {
-      supabase.removeChannel(channel);
-      window.clearInterval(poller);
-    };
+    return () => window.clearInterval(poller);
   }, [storeId, load]);
 
   const filtered = useMemo(() => {

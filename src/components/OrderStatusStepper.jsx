@@ -1,6 +1,9 @@
 import { Check } from 'lucide-react';
+import { useLanguage } from '../i18n/LanguageContext';
+import { statusLabel } from '../utils/statusConstants';
 
 export default function OrderStatusStepper({ stages = [], current }) {
+  const { lang } = useLanguage();
   const currentIndex = stages.indexOf(current);
 
   return (
@@ -50,7 +53,7 @@ export default function OrderStatusStepper({ stages = [], current }) {
                 isUpcoming ? 'text-text-secondary' : 'font-medium text-text-primary'
               }`}
             >
-              {stage}
+              {statusLabel(stage, lang)}
             </p>
           </li>
         );
